@@ -1,9 +1,10 @@
 // TODO: Add custom weapon adder
 // TODO: Custom unit abilities
-// TODO: better block and unit select menu for custom stats
 // TODO: separate into multiple scripts
+// TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
+
 // TODO: Search function
-// TODO: Add thingy that lists Vars too!
+
 
 // remember to use this to find properties/functions
 // for (let stat in _){print(stat)}
@@ -43,9 +44,9 @@ var playername = "";
 
 //var teams = []
 
-const ais = ["None", "MBuilderAI", "BuilderAI", "RepairAI"]
+const ais = ["None", "MBuilderAI", "BuilderAI", "RepairAI", "AssemblerAI", "BoostAI", "CargoAI", "CommandAI", "DefenderAI", "FlyingAI", "FlyingFollowAI", "GroundAI", "HugAI", "LogicAI", "MinerAI", "MissileAI", "SuicideAI"]
 
-var selectedai = 0;
+var selectedai = "None";
 
 var playerAI = null;
 
@@ -74,6 +75,7 @@ var gbutton;
 var stbutton;
 var bstbutton;
 var stubutton;
+var aibutton
 
 var spawnerButton;
 var spawningLabelText;
@@ -98,8 +100,13 @@ var bstatlist;
 
 var mode = "b"
 
+var posb
+
 var teamRect
 var bteamRect
+
+var bfilter = ""
+//var ufilter
 
 /* click capture */
 var clickEvents = [];
@@ -162,14 +169,13 @@ function click(handler, world){
 };
 
 Events.run(Trigger.update, () => {
-	var ai = ais[selectedai];
 	if (teamRect && bteamRect){
 		teamRect.tint.set(team.color);
 		bteamRect.tint.set(team.color);
 	};
 	
 	if (playerAI){
-		if (ai == "MBuilderAI" && Vars.player.unit().type.mineSpeed > 0 && Vars.player.unit().plans.size == 0){
+		if (selectedai == "MBuilderAI" && Vars.player.unit().type.mineSpeed > 0 && Vars.player.unit().plans.size == 0){
 			if (mode == "b"){
 				playerAI = new MinerAI()
 				mode = "m"
@@ -209,6 +215,7 @@ Events.run(Trigger.update, () => {
 		return event.handler(pos, world, hasMouse);
 	});
 });
+
 
 function select(title, values, selector, names, icons){
 	if (values instanceof Seq) {
@@ -317,6 +324,32 @@ function setStatLocal(rule, value) {
 
 function setbStatLocal(rule, value) {
 	blockstat[rule] = value;
+};
+
+function changeAI(value) {
+	selectedai = value;
+	if (selectedai == "MBuilderAI"){
+		aibutton.style.imageUp = Icon.hammer
+		aibutton.style.imageUpColor = Color.orange
+		playerAI = new BuilderAI();
+
+	}else if (selectedai == "BuilderAI"){
+		aibutton.style.imageUp = Icon.hammer
+		aibutton.style.imageUpColor = Color.royal
+		playerAI = new BuilderAI();
+	}else if (selectedai == "RepairAI"){
+		aibutton.style.imageUp = Icon.modeSurvival
+		aibutton.style.imageUpColor = Color.acid
+		playerAI = new RepairAI();
+	}else if (selectedai == "None"){
+		aibutton.style.imageUp = Icon.logic
+		aibutton.style.imageUpColor = Color.white
+		playerAI = null
+	} else {
+		aibutton.style.imageUp = Icon.add
+		aibutton.style.imageUpColor = Color.scarlet
+		playerAI = eval("new " + selectedai + "()");
+	}
 };
 
 function clearbannedLocal(){
@@ -483,6 +516,60 @@ function currentunit(){
 	unitstat = Vars.player.unit().type
 	if (stable != null){updatestats(stable, statlist, unitstat)};
 }
+
+function updateblocklist(filter, btable){
+	if (btable.getCells().size >= 3){
+		btable.getCells().get(2).clearElement();
+		btable.getCells().remove(2);
+	}
+
+	if (posb){
+		let idx = btable.getCells().size - 1
+
+		btable.getCells().get(idx).clearElement();
+		btable.getCells().remove(idx);
+	};
+
+	btable.row();
+	btable.pane(blist => {
+		const blocks = Vars.content.blocks();
+		blocks.sort();
+		let i = 0;
+		blocks.each(blo => {
+			var show = true
+			if (filter && filter.trim().length > 0){
+				let cfilter = filter.trim().toLowerCase()
+	   
+				if (!blo.localizedName.toLowerCase().includes(cfilter)){
+					show = false
+				}
+			};
+			if (show){
+				if (i++ % blocksperrow == 0) {
+					blist.row();
+				}
+
+				const icon = new TextureRegionDrawable(blo.uiIcon);
+				blist.button(icon, () => {
+					block = blo;
+					bbutton.style.imageUp = icon;
+				}).size(76).tooltip(blo.localizedName);
+			}
+		});
+	}).growX().top().center();
+	btable.row();
+
+	posb = btable.button("Set Position", () => {
+		blockdialog.hide();
+	 	click((screen, world) => {
+	 		// We don't need sub-wu precision + make /js output nicer
+	 		bpos.set(Math.round(world.x), Math.round(world.y));
+	 		posb.getLabel().text = "Place at " + Math.round(bpos.x / 8)
+	 			+ ", " + Math.round(bpos.y / 8);
+	 			blockdialog.show();
+	 	}, true);
+	}).width(200).get();
+};
 
 function updatestats(table, list, set) {
 	// hardcode
@@ -846,32 +933,8 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		}, (i, t) => "[#" + t.color + "]" + t, null);
    });
 
-	let aibutton = createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
-		selectedai++
-
-		if (selectedai > ais.length - 1){selectedai = 0};
-
-		var ai = ais[selectedai];
-
-		if (ai == "MBuilderAI"){
-			aibutton.style.imageUp = Icon.hammer
-			aibutton.style.imageUpColor = Color.orange
-			playerAI = new BuilderAI();
-		
-		}else if (ai == "BuilderAI"){
-			aibutton.style.imageUp = Icon.hammer
-			aibutton.style.imageUpColor = Color.royal
-			playerAI = new BuilderAI();
-		}else if (ai == "RepairAI"){
-			aibutton.style.imageUp = Icon.add
-			aibutton.style.imageUpColor = Color.acid
-			playerAI = new RepairAI();
-		}else{
-			aibutton.style.imageUp = Icon.logic
-			aibutton.style.imageUpColor = Color.white
-			playerAI = null
-		};
-
+	aibutton = createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
+		select("Choose player AI", ais, changeAI, ais, null)
 	});
 
 	ebutton = createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
@@ -936,19 +999,29 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	const table = spawndialog.cont;
 	const etable = effectdialog.cont;
 	const btable = blockdialog.cont;
+
 	stable = statdialog.cont;
 	bstable = bstatdialog.cont;
 	gtable = gamedialog.cont;
 
 	/* Name */
-	table.label(() => spawningLabelText);
-	spawningLabelText = spawning.localizedName;
-	table.row();
-
 	etable.label(() => effect.localizedName + (effect.permanent ? " (Permanent effect)" : ""));
 	etable.row();
 
 	/* Selection */
+	const i = table.table().center().top().get();
+	i.defaults().left()
+	i.button(Icon.zoom, Styles.cleari, () => {}).size(50)
+	i.field(bfilter, text => {
+		bfilter = text;
+		updateblocklist(bfilter, btable)
+	}).padBottom(4).growX().size(500, 50).tooltip("Search").get();
+	table.row();
+
+	table.label(() => spawningLabelText);
+	spawningLabelText = spawning.localizedName;
+	table.row();
+
 	spawnlists.push(table.pane(slist => {
 		const units = Vars.content.units();
 		units.sort();
@@ -997,26 +1070,17 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	}).growX().top().center();
 	etable.row();
 
-	
-	btable.pane(blist => {
-		const blocks = Vars.content.blocks();
-		blocks.sort();
-		let i = 0;
-		blocks.each(blo => {
-
-			if (i++ % blocksperrow == 0) {
-				blist.row();
-			}
-
-			const icon = new TextureRegionDrawable(blo.uiIcon);
-			blist.button(icon, () => {
-				block = blo;
-				bbutton.style.imageUp = icon;
-			}).size(76).tooltip(blo.localizedName);
-		});
-	}).growX().top().center();
+	const b = btable.table().center().top().get();
+	b.defaults().left()
+	b.button(Icon.zoom, Styles.cleari, () => {}).size(50)
+	b.field(bfilter, text => {
+		bfilter = text;
+		updateblocklist(bfilter, btable)
+	}).padBottom(4).growX().size(500, 50).tooltip("Search").get();
 	btable.row();
 
+	btable.label(() => block.localizedName);
+	updateblocklist("", btable)
 
 	updatestats(gtable, rulelist, Vars.state.rules);
 	gtable.row();
@@ -1102,19 +1166,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	}).width(200).get();
 
 	table.row();
-
-	var posb;
-	posb = btable.button("Set Position", () => {
-		blockdialog.hide();
-		click((screen, world) => {
-			// We don't need sub-wu precision + make /js output nicer
-			bpos.set(Math.round(world.x), Math.round(world.y));
-			posb.getLabel().text = "Place at " + Math.round(bpos.x / 8)
-				+ ", " + Math.round(bpos.y / 8);
-				blockdialog.show();
-		}, true);
-	}).width(200).get();
-
 	btable.row();
 
 	/* Buttons */
