@@ -1,9 +1,10 @@
 // TODO: Add custom weapon adder
 // TODO: Custom unit abilities
-// TODO: separate into multiple scripts
 // TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
 
-// TODO: Search function
+// TODO: Search function for stat menus
+
+// TODO: separate into multiple scripts and cleanup code
 
 
 // remember to use this to find properties/functions
@@ -106,7 +107,12 @@ var teamRect
 var bteamRect
 
 var bfilter = ""
-//var ufilter
+var ufilter = ""
+
+var r 
+var t
+var tmode
+var poss
 
 /* click capture */
 var clickEvents = [];
@@ -192,7 +198,6 @@ Events.run(Trigger.update, () => {
 
 	if (Vars.ui.hudGroup){
 		spawntable.visible = Vars.ui.hudGroup.children.get(3).visible
-		//teamtable.visible = Vars.ui.hudGroup.children.get(3).visible
 		playertable.visible = Vars.ui.hudGroup.children.get(3).visible
 	}
 
@@ -517,6 +522,115 @@ function currentunit(){
 	if (stable != null){updatestats(stable, statlist, unitstat)};
 }
 
+function updatespawnlist(filter, utable){
+	if (utable.getCells().size >= 3){
+		utable.getCells().get(2).clearElement();
+		utable.getCells().remove(2);
+	}
+
+	if (r){
+		let to_remove = [r, t, tmode, poss]
+		for (let remove in to_remove){
+			let idx = utable.getCells().size - 1
+			//remove.remove()
+			utable.getCells().get(idx).clearElement();
+			utable.getCells().remove(idx);
+		}
+	};
+
+	utable.row()
+	spawnlists.push(utable.pane(slist => {
+		const units = Vars.content.units();
+		units.sort();
+		var i = 0;
+		units.each(unit => {
+			var show = true
+			if (filter && filter.trim().length > 0){
+				let cfilter = filter.trim().toLowerCase()
+	   
+				if (!unit.localizedName.toLowerCase().includes(cfilter)){
+					show = false
+				}
+			};
+			if (show){
+				if (i++ % unitsperrow == 0) {
+					slist.row();
+				}
+
+				const icon = new TextureRegionDrawable(unit.uiIcon);
+				slist.button(icon, () => {
+					if (fuseMode) {
+						fuser = unit;
+						spawningLabelText = spawning.localizedName + " fused with " + fuser.localizedName;
+					}else{
+						spawning = unit;
+						spawningLabelText = spawning.localizedName;
+					};
+
+					sbutton.style.imageUp = icon;
+				}).size(76).tooltip(unit.localizedName);
+			};
+		});
+	}).growX().top().left());
+	utable.row();
+
+	/* Random selection */
+	r = utable.table().center().bottom().get();
+	r.defaults().left();
+	var rSlider = r.slider(0, maxRand, 0.125, rand, n => {
+		rand = n;
+		rField.text = n;
+	}).get();
+	r.add("Randomness: ");
+	var rField = r.field("" + rand, text => {
+		rand = parseInt(text);
+		rSlider.value = rand;
+	}).get();
+	rField.validator = text => !isNaN(parseInt(text));
+	utable.row();
+	
+	/* Count selection */
+	t = utable.table().center().bottom().get();
+	t.defaults().left();
+	var cSlider = t.slider(1, maxCount, count, n => {
+		count = n;
+		cField.text = n;
+	}).get();
+	
+	t.add("Count: ");
+	var cField = t.field("" + count, text => {
+		count = parseInt(text);
+		cSlider.value = count;
+	}).get();
+	cField.validator = text => !isNaN(parseInt(text));
+
+	utable.row();
+
+	tmode = utable.button("Toggle Mode", () => {
+		fuseMode = !fuseMode;
+		if (fuseMode) {
+	 		spawnerButton.get().getLabel().text = "Fuse"
+	 		spawnerButton.get().getCells().first().get().setDrawable(Icon.refresh);
+	 	}else{
+	 		spawningLabelText = spawning.localizedName;
+	 		spawnerButton.get().getLabel().text = "Spawn"
+	 		spawnerButton.get().getCells().first().get().setDrawable(Icon.commandAttack);
+		};
+	}).width(200).get();
+	utable.row();
+
+	poss = utable.button("Set Position", () => {
+		spawndialog.hide();
+	 	click((screen, world) => {
+	 		// We don't need sub-wu precision + make /js output nicer
+	 		spos.set(Math.round(world.x), Math.round(world.y));
+	 		poss.getLabel().text = "Spawn at " + Math.round(spos.x / 8)
+	 			+ ", " + Math.round(spos.y / 8);
+	 			spawndialog.show();
+		}, true);
+	}).width(200).get();
+}
+
 function updateblocklist(filter, btable){
 	if (btable.getCells().size >= 3){
 		btable.getCells().get(2).clearElement();
@@ -582,38 +696,6 @@ function updatestats(table, list, set) {
 	}else if (set == blockstat) {
 		mode = 2
 	}
-
-	// updates the buttons
-	// if(list){
-	// 	let c = 0;
-	// 	for (let stat in set) {
-			
-	// 		if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" || Object.prototype.toString.call(set[stat]) == "[object Number]"){
-	// 			let valuebutton = list.children.get(c)
-	// 			c++
-	// 			if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" && valuebutton.name == "boolean"){
-	// 				let value					
-	// 				if (mode == 0){
-	// 					value = Vars.state.rules[stat];
-	// 				}else if (mode == 1){
-	// 					value = unitstat[stat];
-	// 				}else{
-	// 					value = blockstat[stat];
-	// 				};
-					
-	// 				if (value){
-	// 					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid);
-	// 					valuebutton.getCells().first().get().setDrawable(icon);
-	// 					valuebutton.getLabel().text = "[acid]" + stat
-	// 				}else{
-	// 					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet);
-	// 					valuebutton.getCells().first().get().setDrawable(icon);
-	// 					valuebutton.getLabel().text = "[scarlet]" + stat
-	// 				};
-	// 			};
-	// 		};
-	// 	};
-	// };
 	table.clear();
 
 	if (mode == 0){
@@ -848,7 +930,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	Vars.ui.hudGroup.addChild(spawntable); 
 	Vars.ui.hudGroup.addChild(playertable);
-	//Vars.ui.hudGroup.addChild(teamtable);
 
 	/* create folders */
 	var spawntableinside;
@@ -862,15 +943,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		t.background(Tex.buttonEdge3);
 		playertableinside = t;
 	})).padBottom(0 + TCOffset).padLeft(0);
-
-	//var teamtableinside;
-	//teamtable.table(Styles.black5, cons(t => {
-	//	t.background(Tex.buttonEdge3); // Tex.pane
-	//	teamtableinside = t;
-	//})).padBottom(0 + TCOffset).padLeft(0);
-
-	/* create buttons */
-	// let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
 	gbutton = createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
@@ -972,23 +1044,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		 Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
 		 kill();
 	 });
-
-	// for (let tea of teams) {
-
-	//  	let setteam = tea;
-
-	//  	const tteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
-	//  	tteamRect.tint.set(tea.color);
-	//  	createButton(teamtable, teamtableinside, tea.name, tteamRect, tea.name, Styles.cleari, () => {
-	// 	if (Vars.state.rules.sector) {
-	// 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-	// 		//return;
-	// 	};
-			
-	//  		(Vars.net.client() ? changeteamRemote : changeteamLocal)(setteam);
-	//  	});
-	// };
-
 	spawndialog = new BaseDialog("Spawn Menu");
 	effectdialog = new BaseDialog("Effect Menu");
 	blockdialog = new BaseDialog("Block Menu");
@@ -1012,43 +1067,15 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	const i = table.table().center().top().get();
 	i.defaults().left()
 	i.button(Icon.zoom, Styles.cleari, () => {}).size(50)
-	i.field(bfilter, text => {
-		bfilter = text;
-		updateblocklist(bfilter, btable)
+	i.field(ufilter, text => {
+		ufilter = text;
+		updatespawnlist(ufilter, table)
 	}).padBottom(4).growX().size(500, 50).tooltip("Search").get();
 	table.row();
 
 	table.label(() => spawningLabelText);
 	spawningLabelText = spawning.localizedName;
-	table.row();
-
-	spawnlists.push(table.pane(slist => {
-		const units = Vars.content.units();
-		units.sort();
-		var i = 0;
-		units.each(unit => {
-			// Block "unit" for payloads
-			//if (unit.isHidden()) return;
-
-			if (i++ % unitsperrow == 0) {
-				slist.row();
-			}
-
-			const icon = new TextureRegionDrawable(unit.uiIcon);
-			slist.button(icon, () => {
-				if (fuseMode) {
-					fuser = unit;
-					spawningLabelText = spawning.localizedName + " fused with " + fuser.localizedName;
-				}else{
-					spawning = unit;
-					spawningLabelText = spawning.localizedName;
-				};
-
-				sbutton.style.imageUp = icon;
-			}).size(76).tooltip(unit.localizedName);
-		});
-	}).growX().top().left());
-	table.row();
+	updatespawnlist("", table)
 
 	etable.pane(elist => {
 		const effects = Vars.content.statusEffects();
@@ -1105,67 +1132,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	}).get();
 	dField.validator = text => !isNaN(parseInt(text));
 	etable.row();
-
-	/* Random selection */
-	const r = table.table().center().bottom().get();
-	var rSlider, rField;
-	r.defaults().left();
-	rSlider = r.slider(0, maxRand, 0.125, rand, n => {
-		rand = n;
-		rField.text = n;
-	}).get();
-	r.add("Randomness: ");
-	rField = r.field("" + rand, text => {
-		rand = parseInt(text);
-		rSlider.value = rand;
-	}).get();
-	rField.validator = text => !isNaN(parseInt(text));
-	table.row();
-    
-	/* Count selection */
-	const t = table.table().center().bottom().get();
-	var cSlider, cField;
-	t.defaults().left();
-	cSlider = t.slider(1, maxCount, count, n => {
-		count = n;
-		cField.text = n;
-	}).get();
-	
-	t.add("Count: ");
-	cField = t.field("" + count, text => {
-		count = parseInt(text);
-		cSlider.value = count;
-	}).get();
-	cField.validator = text => !isNaN(parseInt(text));
-
-	table.row();
-
-	table.button("Toggle Mode", () => {
-		fuseMode = !fuseMode;
-		if (fuseMode) {
-			spawnerButton.get().getLabel().text = "Fuse"
-			spawnerButton.get().getCells().first().get().setDrawable(Icon.refresh);
-		}else{
-			spawningLabelText = spawning.localizedName;
-			spawnerButton.get().getLabel().text = "Spawn"
-			spawnerButton.get().getCells().first().get().setDrawable(Icon.commandAttack);
-		};
-	}).width(200).get();
-	table.row();
-
-	var poss;
-	poss = table.button("Set Position", () => {
-		spawndialog.hide();
-		click((screen, world) => {
-			// We don't need sub-wu precision + make /js output nicer
-			spos.set(Math.round(world.x), Math.round(world.y));
-			poss.getLabel().text = "Spawn at " + Math.round(spos.x / 8)
-				+ ", " + Math.round(spos.y / 8);
-				spawndialog.show();
-		}, true);
-	}).width(200).get();
-
-	table.row();
 	btable.row();
 
 	/* Buttons */
