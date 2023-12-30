@@ -6,10 +6,14 @@
 // TODO: Add thingy that lists Vars too!
 
 // remember to use this to find properties/functions
-// for (let stat in ____){print(stat)}
+// for (let stat in _){print(stat)}
 
 /* command parameters */
 let TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
+
+const unitsperrow = 10
+const blocksperrow = 15
+
 const maxCount = 100;
 const maxRand = 10;
 
@@ -54,6 +58,8 @@ var gamedialog = null, button = null;
 var statdialog = null, button = null;
 var bstatdialog = null, button = null;
 var selectdialog = null;
+
+var selectgriddialog = null;
 
 var valuedialog = null, button = null;
 
@@ -218,6 +224,23 @@ function select(title, values, selector, names, icons){
 	Core.app.post(() => {
 		selectdialog.rebuild(title, values, selector, names, icons);
 		selectdialog.show();
+	});
+};
+
+function selectgrid(title, values, selector, names, icons, numperrow){
+	if (values instanceof Seq) {
+		values = values.toArray();
+	}
+
+	if (!names) names = values;
+	if (typeof(names) != "function") {
+		const arr = names;
+		names = i => arr[i];
+	}
+
+	Core.app.post(() => {
+		selectgriddialog.rebuild(title, values, selector, names, icons, numperrow);
+		selectgriddialog.show();
 	});
 };
 //---
@@ -514,7 +537,6 @@ function updatestats(table, list, set) {
 		table.label(() => blockstat.localizedName);
 	};
 	table.row();
-	for (let stat in set) {print(stat)};
 	
 	table.pane(slist => {
 		if (mode == 0){
@@ -710,7 +732,30 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		}
 	});
 	selectdialog.addCloseButton();
-	selectdialog;
+
+	selectgriddialog = extend(BaseDialog, "<title>", {
+		rebuild(title, values, selector, names, icons, numperrow) {
+			print(icons)
+			this.cont.clear();
+			this.title.text = title;
+			this.cont.pane(t => {
+				var it = 0;
+				for (var i in values){	
+					const key = i;	
+					if (it++ % numperrow == 0) {
+						t.row();
+					}
+					const icon = new TextureRegionDrawable(icons[i])
+					t.button(icon, () => {
+						selector(values[key]);
+						this.hide();
+					}).size(76).tooltip(names(i, values[i]));
+				};
+			}).growX().top().left();
+		}
+	});
+	selectgriddialog.addCloseButton();
+
 
 	playername = Core.settings.getString("name").trim();
 
@@ -912,7 +957,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 			// Block "unit" for payloads
 			//if (unit.isHidden()) return;
 
-			if (i++ % 10 == 0) {
+			if (i++ % unitsperrow == 0) {
 				slist.row();
 			}
 
@@ -959,7 +1004,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		let i = 0;
 		blocks.each(blo => {
 
-			if (i++ % 10 == 0) {
+			if (i++ % blocksperrow == 0) {
 				blist.row();
 			}
 
@@ -1088,10 +1133,10 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	};
 
 	statdialog.buttons.button("Choose Unit", Icon.add, () => {
-		select("Choose Unit", Vars.content.units(), u => {
+		selectgrid("Choose Unit", Vars.content.units(), u => {
 			unitstat = u;
 			if (stable != null){updatestats(stable, statlist, unitstat)};
-		}, null, icons);
+		}, null, icons, unitsperrow);
 	});
 
 	var bicons = []
@@ -1099,10 +1144,10 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		bicons.push(Vars.content.blocks().get(n).uiIcon)
 	};
 	bstatdialog.buttons.button("Choose Block", Icon.add, () => {
-		select("Choose Block", Vars.content.blocks(), b => {
+		selectgrid("Choose Block", Vars.content.blocks(), b => {
 			blockstat = b;
 			if (bstable != null){updatestats(bstable, bstatlist, blockstat)};
-		}, null, bicons);
+		}, null, bicons, blocksperrow);
 	});
 	statdialog.buttons.button("Choose Current Unit", Icon.effect, currentunit).width(300);
 
