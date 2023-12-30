@@ -1,0 +1,10 @@
+{
+	"name": "sandbox-tools",
+	"author": "TurboCharged",
+	"displayName": "Sandbox Tools",
+	"description": "Adds many tools in game for easier testing",
+	"dependencies": [],
+	"version": "1.0",
+	"hidden": true,
+	"minGameVersion": 146
+}
