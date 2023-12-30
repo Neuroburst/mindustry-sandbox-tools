@@ -10,6 +10,8 @@ const bpos = new Vec2(-1, -1);
 
 var team = Vars.state.rules.waveTeam;
 
+var unitstat = UnitTypes.dagger
+
 var duration = 30;
 
 var spawning = UnitTypes.dagger, count = 1;
@@ -52,6 +54,7 @@ var ebutton;
 var bbutton;
 var gbutton;
 var stbutton;
+var stubutton
 
 var spawnerButton;
 var spawningLabelText;
@@ -186,7 +189,7 @@ Events.run(Trigger.update, () => {
 	});
 });
 
-function select(title, values, selector, names){
+function select(title, values, selector, names, icons){
 	if (values instanceof Seq) {
 		values = values.toArray();
 	}
@@ -198,7 +201,7 @@ function select(title, values, selector, names){
 	}
 
 	Core.app.post(() => {
-		selectdialog.rebuild(title, values, selector, names);
+		selectdialog.rebuild(title, values, selector, names, icons);
 		selectdialog.show();
 	});
 }
@@ -271,7 +274,7 @@ function setRuleLocal(rule, value) {
 };
 
 function setStatLocal(rule, value) {
-	Vars.player.unit().type[rule] = value;
+	unitstat[rule] = value;
 };
 
 function clearbannedLocal(){
@@ -379,7 +382,7 @@ function setRuleRemote(rule, value, set) {
 };
 
 function setStatRemote(rule, value, set) {
-	let code = ["UnitTypes." + Vars.player.unit().type + "." + rule + "=" + value.toString()];
+	let code = ["UnitTypes." + unitstat + "." + rule + "=" + value.toString()];
 
 	Call.sendChatMessage("/js " + code);
 
@@ -426,6 +429,11 @@ function definefindp() {
 	Call.sendChatMessage("/js findp = name => Groups.player.find(e=>Strings.stripColors(e.name)==name)");
 };
 
+function currentunit(){
+	unitstat = Vars.player.unit().type
+	if (stable != null){updatestats(stable, statlist, unitstat)};
+}
+
 function updatestats(table, list, set) {
 	let rulemode = (set == Vars.state.rules)
 	
@@ -441,7 +449,7 @@ function updatestats(table, list, set) {
 					if (rulemode){
 						value = Vars.state.rules[stat];
 					}else{
-						value = Vars.player.unit().type[stat];
+						value = unitstat[stat];
 					};
 					
 					if (value){
@@ -480,8 +488,8 @@ function updatestats(table, list, set) {
 							(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 							enabled = Vars.state.rules[setstat];
 						}else{
-							(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, !Vars.player.unit().type[setstat]);
-							enabled = Vars.player.unit().type[setstat];
+							(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, !unitstat[setstat]);
+							enabled = unitstat[setstat];
 						};
 
 						if (enabled){
@@ -529,7 +537,7 @@ function updatestats(table, list, set) {
 							}).get();
 							vField.validator = text => !isNaN(parseFloat(text));
 						}else{
-							var vField = vd.field(Vars.player.unit().type[setstat], text => {
+							var vField = vd.field(unitstat[setstat], text => {
 								(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, parseFloat(text));
 							}).get();
 							vField.validator = text => !isNaN(parseFloat(text));
@@ -544,13 +552,13 @@ function updatestats(table, list, set) {
 	};
 };
 
-Events.on(UnitControlEvent, event => {
-	if (stable != null){updatestats(stable, statlist, Vars.player.unit().type)};
-});
+//Events.on(UnitControlEvent, event => {
+//	if (stable != null){updatestats(stable, statlist, Vars.player.unit().type)};
+//});
 
 Events.on(EventType.WorldLoadEvent, e => {
 	if (gtable != null){updatestats(gtable, rulelist, Vars.state.rules)};
-	if (stable != null){updatestats(stable, statlist, Vars.player.unit().type)};
+	if (stable != null){updatestats(stable, statlist, unitstat.type)};
 
 	initialized = true
 	if(!initialized){
@@ -613,20 +621,28 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	};
 
 	selectdialog = extend(BaseDialog, "<title>", {
-		rebuild(title, values, selector, names) {
+		rebuild(title, values, selector, names, icons) {
 			this.cont.clear();
 			this.title.text = title;
 
 			this.cont.pane(t => {
 				for (var i in values) {
 					const key = i;
-					t.button(names(i, values[i]), () => {
-						selector(values[key]);
-						this.hide();
-					}).growX().pad(8);
+					if (icons){
+						t.button(names(i, values[i]), icons[i], () => {
+							selector(values[key]);
+							this.hide();
+						}).growX().pad(8);
+					}else{
+						t.button(names(i, values[i]), () => {
+							selector(values[key]);
+							this.hide();
+						}).growX().pad(8);
+					}
+
 					t.row();
 				}
-			}).size(400, 350);
+			}).size(400, 800);
 		}
 	});
 	selectdialog.addCloseButton();
@@ -724,7 +740,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		};
 
 	});
-	
+
 	ebutton = createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 	 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
@@ -800,7 +816,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	btable.label(() => block.localizedName);
 	btable.row();
 
-	stable.label(() => Vars.player.unit().type.localizedName);
+	stable.label(() => unitstat.localizedName);
 	stable.row();
 
 	/* Selection */
@@ -976,7 +992,17 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	gamedialog.addCloseButton();
 	statdialog.addCloseButton();
 
-	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, clearbanned).width(200);
+	const icon = new TextureRegionDrawable(unitstat.uiIcon);
+	stubutton = statdialog.buttons.button("Choose Unit", () => {
+		select("Choose Unit", Vars.content.units(), u => {
+			unitstat = u;
+			stubutton.style.imageUp = icon;
+			if (stable != null){updatestats(stable, statlist, unitstat)};
+		}, (i, t) => t); // !!!!!!!!!WARNING TODO
+	});
+	statdialog.buttons.button("Choose Current Unit", Icon.effect, currentunit).width(300);
+
+	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, clearbanned).width(300);
 
 	blockdialog.buttons.button("Place", Icon.add, spawnblock)
 		.disabled(() => !Vars.world.passable(bpos.x / 8, bpos.y / 8));
@@ -989,7 +1015,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	spawnerButton = spawndialog.buttons.button("Spawn", Icon.commandAttack, spawn)
 		.disabled(() => !Vars.world.passable(spos.x / 8, spos.y / 8));
-	
+
 	teamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	teamRect.tint.set(team.color);
 	spawndialog.buttons.button("Team", teamRect, 40, () => {
