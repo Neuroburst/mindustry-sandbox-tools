@@ -1,3 +1,7 @@
+// TODO: Make team selector more compact
+// TODO: Add custom weapon adder
+// TODO: Custom unit abilities
+// TODO: better unit selection for custom stats
 /* command parameters */
 let TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
 const maxCount = 100;
@@ -669,7 +673,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	var teamtableinside;
 	teamtable.table(Styles.black5, cons(t => {
-		t.background(Tex.pane);
+		t.background(Tex.buttonEdge3); // Tex.pane
 		teamtableinside = t;
 	})).padBottom(0 + TCOffset).padLeft(0);
 
@@ -682,6 +686,15 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		};
 
 		gamedialog.show();
+	});
+
+	stbutton = createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit unit stats", Styles.defaulti, () => {
+		if (Vars.state.rules.sector) {
+			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			return;
+		};
+
+		statdialog.show();
 	});
 
 	let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
@@ -702,15 +715,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		};
 
 		blockdialog.show();
-	});
-
-	stbutton = createButton(playertable, playertableinside, "Edit", Icon.pencil, "Edit unit stats", Styles.defaulti, () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
-
-		statdialog.show();
 	});
 
 	let aibutton = createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change AI", Styles.defaulti, () => {
