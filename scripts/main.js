@@ -13,6 +13,8 @@
 /* command parameters */
 let TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
 
+const localFunctions = require("localFunctions");
+
 const unitsperrow = 10
 const blocksperrow = 15
 
@@ -606,7 +608,7 @@ function updatespawnlist(filter, utable){
 
 	utable.row();
 
-	tmode = utable.button("Toggle Mode", () => {
+	tmode = utable.button("Toggle Mode", Icon.refresh, () => {
 		fuseMode = !fuseMode;
 		if (fuseMode) {
 	 		spawnerButton.get().getLabel().text = "Fuse"
@@ -619,7 +621,7 @@ function updatespawnlist(filter, utable){
 	}).width(200).get();
 	utable.row();
 
-	poss = utable.button("Set Position", () => {
+	poss = utable.button("Set Position", Icon.down, () => {
 		spawndialog.hide();
 	 	click((screen, world) => {
 	 		// We don't need sub-wu precision + make /js output nicer
@@ -628,7 +630,7 @@ function updatespawnlist(filter, utable){
 	 			+ ", " + Math.round(spos.y / 8);
 	 			spawndialog.show();
 		}, true);
-	}).width(200).get();
+	}).width(300).get();
 }
 
 function updateblocklist(filter, btable){
@@ -673,7 +675,7 @@ function updateblocklist(filter, btable){
 	}).growX().top().center();
 	btable.row();
 
-	posb = btable.button("Set Position", () => {
+	posb = btable.button("Set Position", Icon.down, () => {
 		blockdialog.hide();
 	 	click((screen, world) => {
 	 		// We don't need sub-wu precision + make /js output nicer
@@ -682,7 +684,7 @@ function updateblocklist(filter, btable){
 	 			+ ", " + Math.round(bpos.y / 8);
 	 			blockdialog.show();
 	 	}, true);
-	}).width(200).get();
+	}).width(300).get();
 };
 
 function updatestats(table, list, set) {
@@ -904,7 +906,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	selectgriddialog = extend(BaseDialog, "<title>", {
 		rebuild(title, values, selector, names, icons, numperrow) {
-			print(icons)
 			this.cont.clear();
 			this.title.text = title;
 			this.cont.pane(t => {
@@ -1066,7 +1067,9 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	/* Selection */
 	const i = table.table().center().top().get();
 	i.defaults().left()
-	i.button(Icon.zoom, Styles.cleari, () => {}).size(50)
+	let ssearch = i.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(ssearch);
+	}).size(50).get()
 	i.field(ufilter, text => {
 		ufilter = text;
 		updatespawnlist(ufilter, table)
@@ -1099,7 +1102,9 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	const b = btable.table().center().top().get();
 	b.defaults().left()
-	b.button(Icon.zoom, Styles.cleari, () => {}).size(50)
+	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(bsearch);
+	}).size(50).get();
 	b.field(bfilter, text => {
 		bfilter = text;
 		updateblocklist(bfilter, btable)
