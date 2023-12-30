@@ -204,7 +204,7 @@ function select(title, values, selector, names, icons){
 		selectdialog.rebuild(title, values, selector, names, icons);
 		selectdialog.show();
 	});
-}
+};
 //---
 
 /* Local Fucntions */
@@ -629,7 +629,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 				for (var i in values) {
 					const key = i;
 					if (icons){
-						t.button(names(i, values[i]), icons[i], () => {
+						t.button(names(i, values[i]), new TextureRegionDrawable(icons[i]), 40, () => {
 							selector(values[key]);
 							this.hide();
 						}).growX().pad(8);
@@ -993,12 +993,18 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	statdialog.addCloseButton();
 
 	const icon = new TextureRegionDrawable(unitstat.uiIcon);
-	stubutton = statdialog.buttons.button("Choose Unit", () => {
+	
+	var icons = []
+	for (var n = 0; n < Vars.content.units().size; n++) {
+		icons.push(Vars.content.units().get(n).uiIcon)
+	};
+
+	stubutton = statdialog.buttons.button("Choose Unit", Icon.add, () => {
 		select("Choose Unit", Vars.content.units(), u => {
 			unitstat = u;
 			stubutton.style.imageUp = icon;
 			if (stable != null){updatestats(stable, statlist, unitstat)};
-		}, (i, t) => t); // !!!!!!!!!WARNING TODO
+		}, null, icons);
 	});
 	statdialog.buttons.button("Choose Current Unit", Icon.effect, currentunit).width(300);
 
@@ -1022,7 +1028,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	 	select("Team", Team.baseTeams, t => {
 	 		team = t;
 	 		teamRect.tint.set(team.color);
-	 	}, (i, t) => "[#" + t.color + "]" + t);
+	 	}, (i, t) => "[#" + t.color + "]" + t, null);
 	});
 
 	bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
@@ -1031,7 +1037,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	 	select("Team", Team.baseTeams, t => {
 	 		team = t;
 	 		bteamRect.tint.set(team.color);
-	 	}, (i, t) => "[#" + t.color + "]" + t);
+	 	}, (i, t) => "[#" + t.color + "]" + t, null);
 	});
 	print("Loaded Sandbox Tools!")
 }));
