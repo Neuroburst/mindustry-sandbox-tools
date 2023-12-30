@@ -1,8 +1,9 @@
 // TODO: Add custom weapon adder
 // TODO: Custom unit abilities
 // TODO: better block and unit select menu for custom stats
-
-
+// TODO: separate into multiple scripts
+// TODO: Search function
+// TODO: Add thingy that lists Vars too!
 
 // remember to use this to find properties/functions
 // for (let stat in ____){print(stat)}
@@ -472,86 +473,84 @@ function updatestats(table, list, set) {
 		mode = 2
 	}
 
-	if(list){
-		let c = 0;
-		for (let stat in set) {
+	// updates the buttons
+	// if(list){
+	// 	let c = 0;
+	// 	for (let stat in set) {
 			
-			if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" || Object.prototype.toString.call(set[stat]) == "[object Number]"){
-				let valuebutton = list.children.get(c)
-				c++
-				if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" && valuebutton.name == "boolean"){
-					let value					
-					if (mode == 0){
-						value = Vars.state.rules[stat];
-					}else if (mode == 1){
-						value = unitstat[stat];
-					}else{
-						value = blockstat[stat];
-					};
+	// 		if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" || Object.prototype.toString.call(set[stat]) == "[object Number]"){
+	// 			let valuebutton = list.children.get(c)
+	// 			c++
+	// 			if (Object.prototype.toString.call(set[stat]) == "[object Boolean]" && valuebutton.name == "boolean"){
+	// 				let value					
+	// 				if (mode == 0){
+	// 					value = Vars.state.rules[stat];
+	// 				}else if (mode == 1){
+	// 					value = unitstat[stat];
+	// 				}else{
+	// 					value = blockstat[stat];
+	// 				};
 					
-					if (value){
-					 	let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid);
-					 	valuebutton.getCells().first().get().setDrawable(icon);
-					 	valuebutton.getLabel().text = "[acid]" + stat
-					}else{
-					 	let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet);
-					 	valuebutton.getCells().first().get().setDrawable(icon);
-					 	valuebutton.getLabel().text = "[scarlet]" + stat
-					};
-				};
-			};
+	// 				if (value){
+	// 					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid);
+	// 					valuebutton.getCells().first().get().setDrawable(icon);
+	// 					valuebutton.getLabel().text = "[acid]" + stat
+	// 				}else{
+	// 					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet);
+	// 					valuebutton.getCells().first().get().setDrawable(icon);
+	// 					valuebutton.getLabel().text = "[scarlet]" + stat
+	// 				};
+	// 			};
+	// 		};
+	// 	};
+	// };
+	table.clear();
+
+	if (mode == 0){
+		table.label(() => "World Rules");
+	}else if (mode == 1){
+		table.label(() => unitstat.localizedName);
+	}else{
+		table.label(() => blockstat.localizedName);
+	};
+	table.row();
+	for (let stat in set) {print(stat)};
+	
+	table.pane(slist => {
+		if (mode == 0){
+			rulelist = slist;
+		}else if (mode == 1){
+			statlist = slist;
+		}else{
+			bstatlist = slist;
 		};
 
-	}else{
-		table.pane(slist => {
-			if (mode == 0){
-				rulelist = slist;
-			}else if (mode == 1){
-				statlist = slist;
-			}else{
-				bstatlist = slist;
-			};
+		let i = 0;
+		for (let stat in set) {
 
-			let i = 0;
-			for (let stat in set) {
+			let setstat = stat
 
-				let setstat = stat
-
-				if (Object.prototype.toString.call(set[setstat]) == "[object Boolean]"){
-					if (i++ % 3 == 0) {
-						slist.row();
+			if (Object.prototype.toString.call(set[setstat]) == "[object Boolean]"){
+				if (i++ % 3 == 0) {
+					slist.row();
+				};
+				
+				
+				let statbutton = slist.button(setstat, Icon.cancel, () => {
+					// (this section must be synced)
+					let enabled
+					if (mode == 0){
+						(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						enabled = Vars.state.rules[setstat];
+					}else if (mode == 1){
+						(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, !unitstat[setstat]);
+						enabled = unitstat[setstat];
+					}else{
+						(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, !blockstat[setstat]);
+						enabled = blockstat[setstat];
 					};
-					
-					
-					let statbutton = slist.button(setstat, Icon.cancel, () => {
-						// (this section must be synced)
-						let enabled
-						if (mode == 0){
-							(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, !Vars.state.rules[setstat]);
-							enabled = Vars.state.rules[setstat];
-						}else if (mode == 1){
-							(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, !unitstat[setstat]);
-							enabled = unitstat[setstat];
-						}else{
-							(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, !blockstat[setstat]);
-							enabled = blockstat[setstat];
-						};
 
-						if (enabled){
-							let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
-							statbutton.get().getCells().first().get().setDrawable(icon);
-							statbutton.get().getLabel().text = "[acid]" + setstat
-						}else{
-							let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
-							statbutton.get().getCells().first().get().setDrawable(icon);
-							statbutton.get().getLabel().text = "[scarlet]" + setstat
-						};
-			
-					}).width(300);
-					
-					statbutton.name("boolean")
-
-					if (set[setstat]){
+					if (enabled){
 						let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
 						statbutton.get().getCells().first().get().setDrawable(icon);
 						statbutton.get().getLabel().text = "[acid]" + setstat
@@ -560,47 +559,61 @@ function updatestats(table, list, set) {
 						statbutton.get().getCells().first().get().setDrawable(icon);
 						statbutton.get().getLabel().text = "[scarlet]" + setstat
 					};
+		
+				}).width(300);
 				
-				}else if (Object.prototype.toString.call(set[setstat]) == "[object Number]"){
-					if (i++ % 3 == 0) {
-						slist.row();
+				statbutton.name("boolean")
+
+				if (set[setstat]){
+					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
+					statbutton.get().getCells().first().get().setDrawable(icon);
+					statbutton.get().getLabel().text = "[acid]" + setstat
+				}else{
+					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
+					statbutton.get().getCells().first().get().setDrawable(icon);
+					statbutton.get().getLabel().text = "[scarlet]" + setstat
+				};
+			
+			}else if (Object.prototype.toString.call(set[setstat]) == "[object Number]"){
+				if (i++ % 3 == 0) {
+					slist.row();
+				};
+				
+				let intbutton = slist.button(setstat, () => {
+					intbutton.name("number")
+					valuedialog = null;
+					valuedialog = new BaseDialog("Set Value");
+					valuedialog.show();
+					valuedialog.buttons.button("Set", Icon.ok, () => {valuedialog.hide()}).width(200).height(60);
+
+					const vd = valuedialog.cont.table().center().bottom().get();
+					vd.defaults().left();
+					// (this section must be synced)
+					if (mode == 0){
+						var vField = vd.field(Vars.state.rules[setstat], text => {
+							(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, parseFloat(text));
+						}).get();
+						vField.validator = text => !isNaN(parseFloat(text));
+					}else if (mode == 1){
+						var vField = vd.field(unitstat[setstat], text => {
+							(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, parseFloat(text));
+						}).get();
+						vField.validator = text => !isNaN(parseFloat(text));
+
+					}else {
+						var vField = vd.field(blockstat[setstat], text => {
+							(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, parseFloat(text));
+						}).get();
+						vField.validator = text => !isNaN(parseFloat(text));
 					};
 					
-					let intbutton = slist.button(setstat, () => {
-						intbutton.name("number")
-						valuedialog = null;
-						valuedialog = new BaseDialog("Set Value");
-						valuedialog.show();
-						valuedialog.buttons.button("Set", Icon.ok, () => {valuedialog.hide()}).width(200).height(60);
-
-						const vd = valuedialog.cont.table().center().bottom().get();
-						vd.defaults().left();
-						// (this section must be synced)
-						if (mode == 0){
-							var vField = vd.field(Vars.state.rules[setstat], text => {
-								(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, parseFloat(text));
-							}).get();
-							vField.validator = text => !isNaN(parseFloat(text));
-						}else if (mode == 1){
-							var vField = vd.field(unitstat[setstat], text => {
-								(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, parseFloat(text));
-							}).get();
-							vField.validator = text => !isNaN(parseFloat(text));
-
-						}else {
-							var vField = vd.field(blockstat[setstat], text => {
-								(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, parseFloat(text));
-							}).get();
-							vField.validator = text => !isNaN(parseFloat(text));
-						};
-						
-					}).width(300);
-				};
-		
+				}).width(300);
 			};
-		}).growX().top().center();
+	
+		};
+	}).growX().top().center();
 	};
-};
+
 
 //Events.on(UnitControlEvent, event => {
 //	if (stable != null){updatestats(stable, statlist, Vars.player.unit().type)};
@@ -735,7 +748,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		gamedialog.show();
 	});
 
-	stbutton = createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit unit stats", Styles.defaulti, () => {
+	stbutton = createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -744,7 +757,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		statdialog.show();
 	});
 
-	bstbutton = createButton(spawntable, spawntableinside, "Edit", Icon.edit, "Edit block stats", Styles.defaulti, () => {
+	bstbutton = createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -889,15 +902,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	etable.label(() => effect.localizedName + (effect.permanent ? " (Permanent effect)" : ""));
 	etable.row();
-
-	btable.label(() => block.localizedName);
-	btable.row();
-
-	stable.label(() => unitstat.localizedName);
-	stable.row();
-
-	bstable.label(() => blockstat.localizedName);
-	bstable.row();
 
 	/* Selection */
 	spawnlists.push(table.pane(slist => {
