@@ -758,12 +758,13 @@ function createUnitStatDialog(){
 	};
 	
 	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(unitstat.uiIcon), "", Styles.defaulti, true, () => {
-		ui.selectgrid("Choose Unit", processedUnits, u => {
+		ui.selectgrid("Choose Unit", processedUnits, Vars.content.units(), u => {
+			print(u)
 			unitstat = u;
 			var icon = new TextureRegionDrawable(unitstat.uiIcon)
 			cunit.style.imageUp = icon
 			if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
-		}, null, icons, vars.unitsperrow);
+		}, icons, vars.unitsperrow);
 	}).width(300).get();
 	cunit.label(() => vars.iconRoom + "Choose Unit")
 
@@ -802,11 +803,11 @@ function createBlockStatDialog(){
 	};
 
 	let cblock = bstatdialog.buttons.button("Choose Block", new TextureRegionDrawable(blockstat.uiIcon), 42, () => {
-		ui.selectgrid("Choose Block", processedBlocks, b => {
+		ui.selectgrid("Choose Block", processedBlocks, Vars.content.blocks(), b => {
 			blockstat = b;
 			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(blockstat.uiIcon));
 			if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};
-		}, null, bicons, vars.blocksperrow);
+		}, bicons, vars.blocksperrow);
 	}).width(300).get();
 };
 

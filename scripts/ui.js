@@ -77,19 +77,13 @@ function select(title, values, selector, names, icons){
 };
 
 // selection menu with grid view
-function selectgrid(title, values, selector, names, icons, numperrow){
+function selectgrid(title, tooltips, values, selector, icons, numperrow){
 	if (values instanceof Seq) {
 		values = values.toArray();
-	}
-
-	if (!names) names = values;
-	if (typeof(names) != "function") {
-		const arr = names;
-		names = i => arr[i];
-	}
+	};
 
 	Core.app.post(() => {
-		selectgriddialog.rebuild(title, values, selector, names, icons, numperrow);
+		selectgriddialog.rebuild(title, tooltips, values, selector, icons, numperrow);
 		selectgriddialog.show();
 	});
 };
@@ -131,7 +125,9 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	selectdialog.addCloseButton();
 
 	selectgriddialog = extend(BaseDialog, "<title>", {
-		refresh(values, selector, names, icons, numperrow){
+		refresh(tooltips, values, selector, icons, numperrow){
+			print(tooltips)
+			print(values)
 			if (this.cont.getCells().size >= 2){
 				this.cont.getCells().get(1).clearElement();
 				this.cont.getCells().remove(1);
@@ -142,12 +138,12 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 				for (var i in values){
 					if (selectgridfilter && selectgridfilter.trim().length > 0){
 						let cfilter = selectgridfilter.trim().toLowerCase()
-						if (!String(names(i, values[i])).toLowerCase().includes(cfilter)){
+						if (!tooltips[i].toLowerCase().includes(cfilter)){
 							continue
 						}
 					};
+					const key = i;
 
-					const key = i;	
 					if (it++ % numperrow == 0) {
 						t.row();
 					}
@@ -155,12 +151,12 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 					t.button(icon, () => {
 						selector(values[key]);
 						this.hide();
-					}).size(76).tooltip(names(i, values[i]));
+					}).size(76).tooltip(tooltips[i]);
 				};
 			}).growX().top().left();
 		},
 
-		rebuild(title, values, selector, names, icons, numperrow) {
+		rebuild(title, tooltips, values, selector, icons, numperrow) {
 			this.cont.clear();
 			selectgridfilter = ""
 			this.title.text = title;
@@ -171,9 +167,9 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 			}).size(50, 50).get();
 			var search = s.field(selectgridfilter, text => {
 				selectgridfilter = text;
-				this.refresh(values, selector, names, icons, numperrow);
+				this.refresh(tooltips, values, selector, icons, numperrow);
 			}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
-			this.refresh(values, selector, names, icons, numperrow);
+			this.refresh(tooltips, values, selector, icons, numperrow);
 
 		}
 	});
