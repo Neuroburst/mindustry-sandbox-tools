@@ -1,68 +1,69 @@
 // TODO: Add custom weapon adder
 // TODO: Custom unit abilities
 // TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
+// TODO: Remote functions COMPLETELY BROKEN
 
 // TODO: Search function for stat menus
-
+// TODO: Custom block rotation
 // TODO: separate into multiple scripts and cleanup code
 
 
 // remember to use this to find properties/functions
 // for (let stat in _){print(stat)}
 
-/* command parameters */
-let TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
-
+const vars = require("vars")
+const ui = require("ui");
 const localF = require("localFunctions");
 const remoteF = require("remoteFunctions");
 
-const unitsperrow = 10
-const blocksperrow = 15
-
-const maxCount = 100;
-const maxRand = 10;
-
-const maxDuration = 600;
-
-const spos = new Vec2(-1, -1);
-const bpos = new Vec2(-1, -1);
 
 var team = Vars.state.rules.waveTeam;
 
+/* Unit spawning */
+var spos = new Vec2(-1, -1);
+
+const maxRand = 10;
+const maxCount = 100;
+var rand = 2;
+var count = 1;
+
+var spawning = UnitTypes.dagger;
+
+var fuseMode = false;
+var fuser = UnitTypes.dagger;
+
+
+/* Effects */
+var effect = Vars.content.statusEffects().get(1);
+const maxDuration = 600;
+var duration = 30;
+
+
+/* Blocks */
+var bpos = new Vec2(-1, -1);
+var block = Blocks.coreNucleus;
+
+
+/* Stats */
 var unitstat = UnitTypes.dagger
 var blockstat = Blocks.coreNucleus
 
-var duration = 30;
 
-var spawning = UnitTypes.dagger, count = 1;
-var fuser = UnitTypes.dagger, count = 1;
-var effect = Vars.content.statusEffects().get(1);
-var block = Blocks.coreNucleus;
-
-var rand = 2;
-
-var fuseMode = false;
-
-var playername = "";
-
+/* AI */
+var playerAI = null;
 const ais = ["None", "MBuilderAI", "BuilderAI", "RepairAI", "AssemblerAI", "BoostAI", "CargoAI", "CommandAI", "DefenderAI", "FlyingAI", "FlyingFollowAI", "GroundAI", "HugAI", "LogicAI", "MinerAI", "MissileAI", "SuicideAI"]
-
+var mode = "b"
 var selectedai = "None";
 
-var playerAI = null;
 
-/* Ui Elements */
-var spawndialog = null, button = null;
-var effectdialog = null, button = null;
-var blockdialog = null, button = null;
-var gamedialog = null, button = null;
-var statdialog = null, button = null;
-var bstatdialog = null, button = null;
-var selectdialog = null;
-
-var selectgriddialog = null;
-
-var valuedialog = null, button = null;
+/* UI Elements */
+var spawndialog = null
+var effectdialog = null
+var blockdialog = null
+var gamedialog = null
+var statdialog = null
+var bstatdialog = null
+var valuedialog = null
 
 var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
@@ -72,93 +73,40 @@ var ebutton;
 var bbutton;
 var aibutton;
 
+var spawnlists = [];
 var spawnerButton;
 var spawningLabelText;
 
-/* UI Param */
-let mobileWidth = 52;
-let mobileHeight = 52;
-let buttonHeight = 50;
-let buttonWidth = 50;
-let searchWidth = 500;
-let iconSize = 42;
-let BarHeight = 5;
-
-var spawnlists = [];
-
-var gtable;
-var rulelist;
-
 var stable;
+var gtable;
 var bstable;
+
+var rulelist;
 var statlist;
 var bstatlist;
 
-var mode = "b"
-
-var posb
-
-var teamRect
-var bteamRect
-
-var bfilter = ""
-var ufilter = ""
-
+// tables that need to be regenerated for searching
 var r 
 var t
 var tmode
 var poss
+var posb
+
+// color rects for team indication
+var teamRect
+var bteamRect
+
+// filtering for search
+var bfilter = ""
+var ufilter = ""
+
+/* Remote */
+var playername = "";
+
 
 /* click capture */
 var clickEvents = [];
 const world = new Vec2();
-
-/* UI Creation (Essentially re-writing certain parts of ui-lib) */
-function createButton(t, it, name, icon, tooltip, style, clicked){
-	const cell = t.button(icon, style, iconSize, ()=>{});
-	cell.name(name);
-	cell.tooltip(tooltip)
-	let button = cell.get();
-	let bstyle = button.style;
-
-	if (clicked) {
-		button.clicked(() => {
-			try {
-				clicked(button);
-			} catch (e) {
-				Vars.ui.showInfoToast("[red]Error when clicking button; " + name + e, 10);
-			}
-		});
-	};
-	it.add(button).pad(BarHeight).left().size(buttonWidth, buttonHeight);
-	return button;
-};
-
-function instanceButton(icon, tooltip, style, clicked){
-	//const button = new ImageButton(icon, style);
-	var r = new Table().bottom().left();
-	r.table(Styles.black5, cons(t => {})).padBottom(20)
-
-	const cell = r.button(icon, style, ()=>{});
-	cell.tooltip(tooltip);
-
-	const button = cell.get()
-
-	let bstyle = button.style;
-
-	if (clicked) {
-		button.clicked(() => {
-			try {
-				clicked(button);
-			} catch (e) {
-				Vars.ui.showInfoToast("[red]Error when clicking button; " + e, 10);
-			}
-		});
-	};
-
-	delete r
-	return button;
-};
 
 // handling click events
 function click(handler, world){
@@ -169,122 +117,32 @@ function click(handler, world){
 	return clickEvents.length - 1;
 };
 
-Events.run(Trigger.update, () => {
-	if (teamRect && bteamRect){
-		teamRect.tint.set(team.color);
-		bteamRect.tint.set(team.color);
-	};
-	
-	if (playerAI){
-		if (selectedai == "MBuilderAI" && Vars.player.unit().type.mineSpeed > 0 && Vars.player.unit().plans.size == 0){
-			if (mode == "b"){
-				playerAI = new MinerAI()
-				mode = "m"
-			};
-		}else{
-			if (mode == "m"){
-				playerAI = new BuilderAI()
-				mode = "b"
-			};
-		};
-	};
-	
-	if (playerAI && Vars.state.paused == false){playerAI.unit(Vars.player.unit()); playerAI.updateUnit()};
-
-	if (Vars.ui.hudGroup){
-		spawntable.visible = Vars.ui.hudGroup.children.get(3).visible
-		playertable.visible = Vars.ui.hudGroup.children.get(3).visible
-	}
-
-	if (!Core.input.justTouched()) {
-		return;
-	}
-
-	// Position in the mindustry world
-	world.set(Core.input.mouseWorld());
-	// 0, 0 to w, h
-	const pos = Core.input.mouse();
-	const hasMouse = Core.scene.hasMouse();
-
-	clickEvents = clickEvents.filter(event => {
-		// Mod cancelled the event
-		if (!event) return;
-		// Clicked over a UI element, try again next time
-		if (event.world && hasMouse) return true;
-
-		return event.handler(pos, world, hasMouse);
-	});
-});
-
-
-function select(title, values, selector, names, icons){
-	if (values instanceof Seq) {
-		values = values.toArray();
-	}
-
-	if (!names) names = values;
-	if (typeof(names) != "function") {
-		const arr = names;
-		names = i => arr[i];
-	}
-
-	Core.app.post(() => {
-		selectdialog.rebuild(title, values, selector, names, icons);
-		selectdialog.show();
-	});
+// functions
+function definefindp() {
+	Call.sendChatMessage("/js findp = name => Groups.player.find(e=>Strings.stripColors(e.name)==name)");
 };
-
-function selectgrid(title, values, selector, names, icons, numperrow){
-	if (values instanceof Seq) {
-		values = values.toArray();
-	}
-
-	if (!names) names = values;
-	if (typeof(names) != "function") {
-		const arr = names;
-		names = i => arr[i];
-	}
-
-	Core.app.post(() => {
-		selectgriddialog.rebuild(title, values, selector, names, icons, numperrow);
-		selectgriddialog.show();
-	});
-};
-//---
-
 function spawn() {
 	(Vars.net.client() ? remoteF.spawnRemote : localF.spawnLocal)(spos, count, rand, spawning, team, fuser, fuseMode);
 };
-
 function spawnblock() {
 	(Vars.net.client() ? remoteF.spawnblockRemote : localF.spawnblockLocal)(bpos, block, team);
 };
-
 function apply(perma) {
 	if (!perma){perma = false}
 	(Vars.net.client() ? remoteF.applyRemote : localF.applyLocal)(effect, duration * 60, perma);
 };
-
 function applyperma() {
 	apply(true);
 };
-
 function kill() {
 	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)();
 };
-
 function clear() {
 	(Vars.net.client() ? remoteF.clearRemote : localF.clearLocal)();
 };
-
 function clearbanned() {
 	(Vars.net.client() ? remoteF.clearbannedRemote : localF.clearbannedLocal)();
 };
-
-function definefindp() {
-	Call.sendChatMessage("/js findp = name => Groups.player.find(e=>Strings.stripColors(e.name)==name)");
-};
-
 function changeAI(value) {
 	let selectedai = value;
 	if (selectedai == "MBuilderAI"){
@@ -311,11 +169,11 @@ function changeAI(value) {
 	}
     return selectedai
 };
-
 function currentunit(){
 	unitstat = Vars.player.unit().type
 	if (stable != null){updatestats(stable, statlist, unitstat)};
 }
+
 
 function updatespawnlist(filter, utable){
 	if (utable.getCells().size >= 3){
@@ -348,7 +206,7 @@ function updatespawnlist(filter, utable){
 				}
 			};
 			if (show){
-				if (i++ % unitsperrow == 0) {
+				if (i++ % vars.unitsperrow == 0) {
 					slist.row();
 				}
 
@@ -454,7 +312,7 @@ function updateblocklist(filter, btable){
 				}
 			};
 			if (show){
-				if (i++ % blocksperrow == 0) {
+				if (i++ % vars.blocksperrow == 0) {
 					blist.row();
 				}
 
@@ -601,68 +459,66 @@ function updatestats(table, list, set) {
 	};
 
 
+Events.run(Trigger.update, () => {
+	if (teamRect && bteamRect){
+		teamRect.tint.set(team.color);
+		bteamRect.tint.set(team.color);
+	};
+	
+	if (playerAI){
+		if (selectedai == "MBuilderAI" && Vars.player.unit().type.mineSpeed > 0 && Vars.player.unit().plans.size == 0){
+			if (mode == "b"){
+				playerAI = new MinerAI()
+				mode = "m"
+			};
+		}else{
+			if (mode == "m"){
+				playerAI = new BuilderAI()
+				mode = "b"
+			};
+		};
+	};
+	
+	if (playerAI && Vars.state.paused == false){playerAI.unit(Vars.player.unit()); playerAI.updateUnit()};
+
+	if (Vars.ui.hudGroup){
+		spawntable.visible = Vars.ui.hudGroup.children.get(3).visible
+		playertable.visible = Vars.ui.hudGroup.children.get(3).visible
+	}
+
+	if (!Core.input.justTouched()) {
+		return;
+	}
+
+	// Position in the mindustry world
+	world.set(Core.input.mouseWorld());
+	// 0, 0 to w, h
+	const pos = Core.input.mouse();
+	const hasMouse = Core.scene.hasMouse();
+
+	clickEvents = clickEvents.filter(event => {
+		// Mod cancelled the event
+		if (!event) return;
+		// Clicked over a UI element, try again next time
+		if (event.world && hasMouse) return true;
+
+		return event.handler(pos, world, hasMouse);
+	});
+});
+
 Events.on(EventType.WorldLoadEvent, e => {
+	// Update tables
 	if (gtable != null){updatestats(gtable, rulelist, Vars.state.rules)};
 	if (stable != null){updatestats(stable, statlist, unitstat)};
 	if (bstable != null){updatestats(bstable, bstatlist, blockstat)};
 });
 
 Events.on(EventType.ClientLoadEvent, cons(() => {
+	// Setup UI
 	if(Vars.mobile){
-		buttonHeight = mobileHeight;
-		buttonWidth = mobileWidth;
+		vars.buttonHeight = vars.mobileHeight;
+		vars.buttonWidth = vars.mobileWidth;
 	};
-
-	selectdialog = extend(BaseDialog, "<title>", {
-		rebuild(title, values, selector, names, icons) {
-			this.cont.clear();
-			this.title.text = title;
-
-			this.cont.pane(t => {
-				for (var i in values) {
-					const key = i;
-					if (icons){
-						t.button(names(i, values[i]), new TextureRegionDrawable(icons[i]), iconSize, () => {
-							selector(values[key]);
-							this.hide();
-						}).growX().pad(8);
-					}else{
-						t.button(names(i, values[i]), () => {
-							selector(values[key]);
-							this.hide();
-						}).growX().pad(8);
-					}
-
-					t.row();
-				}
-			}).size(400, 800);
-		}
-	});
-	selectdialog.addCloseButton();
-
-	selectgriddialog = extend(BaseDialog, "<title>", {
-		rebuild(title, values, selector, names, icons, numperrow) {
-			this.cont.clear();
-			this.title.text = title;
-			this.cont.pane(t => {
-				var it = 0;
-				for (var i in values){	
-					const key = i;	
-					if (it++ % numperrow == 0) {
-						t.row();
-					}
-					const icon = new TextureRegionDrawable(icons[i])
-					t.button(icon, () => {
-						selector(values[key]);
-						this.hide();
-					}).size(76).tooltip(names(i, values[i]));
-				};
-			}).growX().top().left();
-		}
-	});
-	selectgriddialog.addCloseButton();
-
-
 	playername = Core.settings.getString("name").trim();
 
 	Vars.ui.hudGroup.addChild(spawntable); 
@@ -673,14 +529,14 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	spawntable.table(Styles.black5, cons(t2 => {
 	t2.background(Tex.buttonEdge3);
 	spawntableinside = t2;
-	})).padBottom(80 + TCOffset).padLeft(0).name("SpawnTable");
+	})).padBottom(80 + vars.TCOffset).padLeft(0).name("SpawnTable");
 
 	var playertableinside;
 	playertable.table(Styles.black5, cons(t => {
 		t.background(Tex.buttonEdge3);
 		playertableinside = t;
-	})).padBottom(0 + TCOffset).padLeft(0);
-	createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
+	})).padBottom(0 + vars.TCOffset).padLeft(0);
+	ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -689,7 +545,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		gamedialog.show();
 	});
 
-	createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
+	ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -698,7 +554,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		statdialog.show();
 	});
 
-	createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
+	ui.createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -709,7 +565,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 
 	let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
-	sbutton = createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, () => {
+	sbutton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -719,7 +575,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	});
 	
 	let blockicon = new TextureRegionDrawable(block.uiIcon);
-	bbutton = createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, () => {
+	bbutton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -730,23 +586,23 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	var bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bbteamRect.tint.set(Vars.player.team().color);
-	createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, () => {
+	ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
 		};
 
-		select("Team", Team.all, t => {
+		ui.select("Team", Team.all, t => {
 			(Vars.net.client() ? changeteamRemote : localF.changeteamLocal)(t);
 			bbteamRect.tint.set(t.color);
 		}, (i, t) => "[#" + t.color + "]" + t, null);
    });
 
-	aibutton = createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
-		select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
+	aibutton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
+		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
 
-	ebutton = createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
+	ebutton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 	 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 	 		return;
@@ -754,7 +610,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	 	effectdialog.show();
 	});
 
-	createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, () => {
+	ui.createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -762,7 +618,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
 		(Vars.net.client() ? healRemote : localF.healLocal)(true);
 	});
-	createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
+	ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
 	if (Vars.state.rules.sector) {
 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 		return;
@@ -772,7 +628,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	 	(Vars.net.client() ? healRemote : localF.healLocal)(false);
 	});
 	
-	let kbutton = createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, () => {
+	let kbutton = ui.createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			 return;
@@ -805,11 +661,11 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	i.defaults().left()
 	let ssearch = i.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ssearch);
-	}).size(buttonWidth, buttonHeight).get()
+	}).size(vars.buttonWidth, vars.buttonHeight).get()
 	i.field(ufilter, text => {
 		ufilter = text;
 		updatespawnlist(ufilter, table)
-	}).padBottom(4).growX().size(searchWidth, buttonHeight).tooltip("Search").get();
+	}).padBottom(4).growX().size(vars.searchWidth, vars.buttonHeight).tooltip("Search").get();
 	table.row();
 
 	table.label(() => spawningLabelText);
@@ -840,11 +696,11 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	b.defaults().left()
 	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
-	}).size(buttonWidth, buttonHeight).get();
+	}).size(vars.buttonWidth, vars.buttonHeight).get();
 	b.field(bfilter, text => {
 		bfilter = text;
 		updateblocklist(bfilter, btable)
-	}).padBottom(4).growX().size(searchWidth, buttonHeight).tooltip("Search").get();
+	}).padBottom(4).growX().size(vars.searchWidth, vars.buttonHeight).tooltip("Search").get();
 	btable.row();
 
 	btable.label(() => block.localizedName);
@@ -891,10 +747,10 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	};
 
 	statdialog.buttons.button("Choose Unit", Icon.add, () => {
-		selectgrid("Choose Unit", Vars.content.units(), u => {
+		ui.selectgrid("Choose Unit", Vars.content.units(), u => {
 			unitstat = u;
 			if (stable != null){updatestats(stable, statlist, unitstat)};
-		}, null, icons, unitsperrow);
+		}, null, icons, vars.unitsperrow);
 	});
 
 	var bicons = []
@@ -902,10 +758,10 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		bicons.push(Vars.content.blocks().get(n).uiIcon)
 	};
 	bstatdialog.buttons.button("Choose Block", Icon.add, () => {
-		selectgrid("Choose Block", Vars.content.blocks(), b => {
+		ui.selectgrid("Choose Block", Vars.content.blocks(), b => {
 			blockstat = b;
 			if (bstable != null){updatestats(bstable, bstatlist, blockstat)};
-		}, null, bicons, blocksperrow);
+		}, null, bicons, vars.blocksperrow);
 	});
 	statdialog.buttons.button("Choose Current Unit", Icon.effect, currentunit).width(300);
 
@@ -925,8 +781,8 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	teamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	teamRect.tint.set(team.color);
-	spawndialog.buttons.button("Team", teamRect, iconSize, () => {
-	 	select("Team", Team.all, t => {
+	spawndialog.buttons.button("Team", teamRect, vars.iconSize, () => {
+	 	ui.select("Team", Team.all, t => {
 	 		team = t;
 	 		teamRect.tint.set(team.color);
 	 	}, (i, t) => "[#" + t.color + "]" + t, null);
@@ -934,8 +790,8 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bteamRect.tint.set(team.color);
-	blockdialog.buttons.button("Team", bteamRect, iconSize, () => {
-	 	select("Team", Team.all, t => {
+	blockdialog.buttons.button("Team", bteamRect, vars.iconSize, () => {
+	 	ui.select("Team", Team.all, t => {
 	 		team = t;
 	 		bteamRect.tint.set(team.color);
 	 	}, (i, t) => "[#" + t.color + "]" + t, null);
