@@ -19,7 +19,12 @@ var BarDist = 72;
 
 var iconRoom = "   ";
 
+var defaultUnit = UnitTypes.dagger
+var defaultBlock = Blocks.coreNucleus
+
 module.exports = {
+    defaultUnit : defaultUnit,
+    defaultBlock : defaultBlock,
     TCOffset : TCOffset,
     unitsperrow : unitsperrow,
     blocksperrow : blocksperrow,

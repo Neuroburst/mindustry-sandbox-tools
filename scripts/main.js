@@ -1,7 +1,10 @@
-// TODO: Add custom weapon adder
-// TODO: Custom unit abilities
-// TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
 // TODO: Remote functions COMPLETELY BROKEN
+
+// TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
+// TODO: Allow for more than just editing of bools and numbers (check UnitTypes)
+
+// TODO: Custom unit abilities
+// TODO: Add custom weapon adder
 
 // TODO: Search function for stat menus
 
@@ -25,16 +28,16 @@ const maxCount = 100;
 var rand = 2;
 var count = 1;
 
-var spawning = UnitTypes.dagger;
+var spawning = vars.defaultUnit;
 
 var fuseMode = false;
-var fuser = UnitTypes.dagger;
+var fuser = vars.defaultUnit;
 
 
 /* Blocks */
 var bpos = new Vec2(-1, -1);
 var brot = 0
-var block = Blocks.coreNucleus;
+var block = vars.defaultBlock;
 
 
 /* Effects */
@@ -44,8 +47,8 @@ var duration = 30;
 
 
 /* Stats */
-var unitstat = UnitTypes.dagger
-var blockstat = Blocks.coreNucleus
+var unitstat = vars.defaultUnit
+var blockstat = vars.defaultBlock
 
 
 /* AI */
@@ -88,16 +91,19 @@ var bteamRect
 
 
 // tables that need to be regenerated for searching
-var r 
-var t
-var tmode
-var poss
-var posb
-var rotb = 0
+var r;
+var t;
+var tmode;
+var poss;
+var posb;
+var rotb;
 
 // filtering for search
-var ufilter = ""
-var bfilter = ""
+var ufilter = "";
+var bfilter = "";
+var rfilter = "";
+var usfilter = "";
+var bsfilter = "";
 
 
 /* Remote */
@@ -168,7 +174,7 @@ function changeAI(value) {
 };
 function currentunit(){
 	unitstat = Vars.player.unit().type
-	if (statsTable != null){updatestats(statsTable, unitstat)};
+	if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
 }
 
 
@@ -353,7 +359,7 @@ function updateblocklist(filter, blockTable){
 	}).width(300).get();
 };
 
-function updatestats(table, set) {
+function updatestats(filter, table, set) {
 	// hardcode
 	// 0 = rules
 	// 1 = unit
@@ -364,8 +370,15 @@ function updatestats(table, set) {
 	}else if (set == blockstat) {
 		mode = 2
 	}
-	table.clear();
 
+	if (table.getCells().size >= 3){
+		table.getCells().get(1).clearElement();
+		table.getCells().remove(1);
+		table.getCells().get(1).clearElement();
+		table.getCells().remove(1);
+	}
+
+	table.row();
 	if (mode == 0){
 		table.label(() => "World Rules");
 	}else if (mode == 1){
@@ -378,7 +391,13 @@ function updatestats(table, set) {
 	table.pane(slist => {
 		let i = 0;
 		for (let stat in set) {
-
+			if (filter && filter.trim().length > 0){
+				let cfilter = filter.trim().toLowerCase()
+	   
+				if (!stat.toLowerCase().includes(cfilter)){
+					continue
+				}
+			};
 			let setstat = stat
 
 			if (Object.prototype.toString.call(set[setstat]) == "[object Boolean]"){
@@ -454,7 +473,7 @@ function updatestats(table, set) {
 
 					}else {
 						var vField = vd.field(blockstat[setstat], text => {
-							(Vars.net.client() ? setbStatRemote : localF.setStatLocal)(blockstat, setstat, parseFloat(text));
+							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(blockstat, setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 					};
@@ -683,7 +702,19 @@ function createBlockDialog(){
 function createRulesDialog(){
 	gamedialog = new BaseDialog("Game Menu");
 	rulesTable = gamedialog.cont;
-	updatestats(rulesTable, Vars.state.rules);
+
+	const r = rulesTable.table().center().top().get();
+	r.defaults().left()
+	let rsearch = r.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(rsearch);
+	}).size(50, 50).get();
+	r.field(rfilter, text => {
+		rfilter = text;
+		updatestats(rfilter, rulesTable, Vars.state.rules);
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	rulesTable.row();
+	updatestats("", rulesTable, Vars.state.rules);
+
 	gamedialog.addCloseButton();
 	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, clearbanned).width(300);
 };
@@ -691,7 +722,18 @@ function createRulesDialog(){
 function createUnitStatDialog(){
 	statdialog = new BaseDialog("Unit Stat Menu");
 	statsTable = statdialog.cont;
-	updatestats(statsTable, UnitTypes.dagger);
+
+	const u = statsTable.table().center().top().get();
+	u.defaults().left()
+	let ussearch = u.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(ussearch);
+	}).size(50, 50).get();
+	u.field(usfilter, text => {
+		usfilter = text;
+		updatestats(usfilter, statsTable, unitstat);
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	statsTable.row();
+	updatestats("", statsTable, unitstat);
 	statdialog.addCloseButton();
 	
 	var icons = []
@@ -705,7 +747,7 @@ function createUnitStatDialog(){
 			unitstat = u;
 			var icon = new TextureRegionDrawable(unitstat.uiIcon)
 			cunit.style.imageUp = icon
-			if (statsTable != null){updatestats(statsTable, unitstat)};
+			if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
 		}, null, icons, vars.unitsperrow);
 	}).width(300).get();
 	cunit.label(() => vars.iconRoom + "Choose Unit")
@@ -720,7 +762,18 @@ function createUnitStatDialog(){
 function createBlockStatDialog(){
 	bstatdialog = new BaseDialog("Block Stat Menu");
 	blockStatsTable = bstatdialog.cont;
-	updatestats(blockStatsTable, Blocks.coreNucleus);
+
+	const b = blockStatsTable.table().center().top().get();
+	b.defaults().left()
+	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(bsearch);
+	}).size(50, 50).get();
+	b.field(bsfilter, text => {
+		bsfilter = text;
+		updatestats(bsfilter, blockStatsTable, blockstat);
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	blockStatsTable.row();
+	updatestats("", blockStatsTable, blockstat);
 	bstatdialog.addCloseButton();
 	var bicons = []
 	for (var n = 0; n < Vars.content.blocks().size; n++) {
@@ -730,7 +783,7 @@ function createBlockStatDialog(){
 		ui.selectgrid("Choose Block", Vars.content.blocks(), b => {
 			blockstat = b;
 			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(blockstat.uiIcon));
-			if (blockStatsTable != null){updatestats(blockStatsTable, blockstat)};
+			if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};
 		}, null, bicons, vars.blocksperrow);
 	}).width(300).get();
 };
@@ -786,9 +839,9 @@ Events.run(Trigger.update, () => {
 
 Events.on(EventType.WorldLoadEvent, e => {
 	// Update tables
-	if (rulesTable != null){updatestats(rulesTable, Vars.state.rules)};
-	if (statsTable != null){updatestats(statsTable, unitstat)};
-	if (blockStatsTable != null){updatestats(blockStatsTable, blockstat)};
+	if (rulesTable != null){updatestats(rfilter, rulesTable, Vars.state.rules)};
+	if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
+	if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};
 });
 
 Events.on(EventType.ClientLoadEvent, cons(() => {
