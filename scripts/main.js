@@ -68,13 +68,15 @@ var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
 
 var statusButton;
-var blockButton;
 var aiButton;
 
 var spawnMenuButton;
 var spawnlists = [];
 var spawnerButton;
 var spawningLabelText;
+
+var placeButton;
+var blockButton;
 
 var rulesTable;
 var statsTable;
@@ -215,7 +217,9 @@ function updatespawnlist(filter, utable){
 						spawning = unit;
 						spawningLabelText = spawning.localizedName;
 					};
-
+					if (!fuseMode){
+						spawnerButton.style.imageUp = icon;
+					}
 					spawnMenuButton.style.imageUp = icon;
 				}).size(76).tooltip(unit.localizedName);
 			};
@@ -258,14 +262,15 @@ function updatespawnlist(filter, utable){
 	tmode = utable.button("Toggle Mode", Icon.refresh, () => {
 		fuseMode = !fuseMode;
 		if (fuseMode) {
-	 		spawnerButton.get().getLabel().text = "Fuse"
-	 		spawnerButton.get().getCells().first().get().setDrawable(Icon.refresh);
+			spawnerButton.style.imageUp = Icon.refresh;
+	 		//spawnerButton.getCells().get(1).get().text = vars.iconRoom + "Fuse";
 	 	}else{
+			const icon = new TextureRegionDrawable(spawning.uiIcon);
+			spawnerButton.style.imageUp = icon;
 	 		spawningLabelText = spawning.localizedName;
-	 		spawnerButton.get().getLabel().text = "Spawn"
-	 		spawnerButton.get().getCells().first().get().setDrawable(Icon.commandAttack);
+			// spawnerButton.getCells().get(1).get().text = vars.iconRoom + "Spawn";
 		};
-	}).width(200).get();
+	}).width(300).get();
 	utable.row();
 
 	poss = utable.button("Set Position", Icon.effect, () => {
@@ -319,6 +324,7 @@ function updateblocklist(filter, blockTable){
 				blist.button(icon, () => {
 					block = blo;
 					blockButton.style.imageUp = icon;
+					placeButton.getCells().first().get().setDrawable(icon);
 				}).size(76).tooltip(blo.localizedName);
 			}
 		});
@@ -463,14 +469,14 @@ function updatestats(table, set) {
 
 // UI Creation
 function createFolderButtons(spawntableinside, playertableinside){
-	ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
+	ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
 		};
 		gamedialog.show();
 	});
-	ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
+	ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, false, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -478,17 +484,16 @@ function createFolderButtons(spawntableinside, playertableinside){
 
 		statdialog.show();
 	});
-	ui.createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
+	ui.createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
 		};
 
 		bstatdialog.show();
-	});
-
+	}, 0);
 	let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
-	spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, () => {
+	spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -497,7 +502,7 @@ function createFolderButtons(spawntableinside, playertableinside){
 		spawndialog.show();
 	});
 	let blockicon = new TextureRegionDrawable(block.uiIcon);
-	blockButton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, () => {
+	blockButton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -505,10 +510,9 @@ function createFolderButtons(spawntableinside, playertableinside){
 
 		blockdialog.show();
 	});
-
 	var bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bbteamRect.tint.set(Vars.player.team().color);
-	ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, () => {
+	ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -519,17 +523,17 @@ function createFolderButtons(spawntableinside, playertableinside){
 			bbteamRect.tint.set(t.color);
 		}, (i, t) => "[#" + t.color + "]" + t, null);
 	});
-	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
+	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
 		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
-	statusButton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
+	statusButton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
 		};
 		statusdialog.show();
 	});
-	ui.createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, () => {
+	ui.createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -537,7 +541,7 @@ function createFolderButtons(spawntableinside, playertableinside){
 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
 		(Vars.net.client() ? healRemote : localF.healLocal)(true);
 	});
-	ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
+	ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, false,  () => {
 	if (Vars.state.rules.sector) {
 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 		return;
@@ -545,7 +549,7 @@ function createFolderButtons(spawntableinside, playertableinside){
 		Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
 		(Vars.net.client() ? healRemote : localF.healLocal)(false);
 	});
-	let kbutton = ui.createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, () => {
+	ui.createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -622,9 +626,16 @@ function createSpawnDialog(){
 	updatespawnlist("", spawnTable);
 
 	spawndialog.addCloseButton();
+	
+	spawnerButton = ui.createButton(spawndialog.buttons, null, "Spawn", new TextureRegionDrawable(spawning.uiIcon), "", Styles.defaulti, true, () => {
+		spawn();
+	}).disabled(() => !Vars.world.passable(spos.x / 8, spos.y / 8)).width(300).get();
+	spawnerButton.label(() => vars.iconRoom + "Spawn")
 
-	spawnerButton = spawndialog.buttons.button("Spawn", Icon.commandAttack, spawn)
-		.disabled(() => !Vars.world.passable(spos.x / 8, spos.y / 8));
+	// spawnerButton = spawndialog.buttons.button("Spawn", new TextureRegionDrawable(spawning.uiIcon), () => {
+	// 	spawn();
+	// })
+
 
 	steamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	steamRect.tint.set(team.color);
@@ -655,8 +666,9 @@ function createBlockDialog(){
 
 	blockdialog.addCloseButton();
 
-	blockdialog.buttons.button("Place", Icon.add, spawnblock)
-	.disabled(() => !Vars.world.passable(bpos.x / 8, bpos.y / 8));
+	placeButton = blockdialog.buttons.button("Place", new TextureRegionDrawable(block.uiIcon), 42, () => {
+		spawnblock();
+	}).disabled(() => !Vars.world.passable(bpos.x / 8, bpos.y / 8)).width(300).get();
 
 	bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bteamRect.tint.set(team.color);
@@ -686,14 +698,23 @@ function createUnitStatDialog(){
 	for (var n = 0; n < Vars.content.units().size; n++) {
 		icons.push(Vars.content.units().get(n).uiIcon)
 	};
-	let cunit = statdialog.buttons.button("Choose Unit", Icon.add, () => {
+	//spawnerButton.get().getCells().first().get().setDrawable(new TextureRegionDrawable(unitstat.uiIcon));
+	
+	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(unitstat.uiIcon), "", Styles.defaulti, true, () => {
 		ui.selectgrid("Choose Unit", Vars.content.units(), u => {
 			unitstat = u;
-			cunit.getCells().first().get().setDrawable(new TextureRegionDrawable(unitstat.uiIcon));
+			var icon = new TextureRegionDrawable(unitstat.uiIcon)
+			cunit.style.imageUp = icon
 			if (statsTable != null){updatestats(statsTable, unitstat)};
 		}, null, icons, vars.unitsperrow);
-	}).get();
-	statdialog.buttons.button("Choose Current Unit", Icon.effect, currentunit).width(300);
+	}).width(300).get();
+	cunit.label(() => vars.iconRoom + "Choose Unit")
+
+	statdialog.buttons.button("Choose Current Unit", Icon.effect, () => {
+		currentunit();
+		var icon = new TextureRegionDrawable(unitstat.uiIcon)
+		cunit.style.imageUp = icon
+	}).width(300);
 };
 
 function createBlockStatDialog(){
@@ -705,12 +726,13 @@ function createBlockStatDialog(){
 	for (var n = 0; n < Vars.content.blocks().size; n++) {
 		bicons.push(Vars.content.blocks().get(n).uiIcon)
 	};
-	bstatdialog.buttons.button("Choose Block", Icon.add, () => {
+	let cblock = bstatdialog.buttons.button("Choose Block", new TextureRegionDrawable(blockstat.uiIcon), 42, () => {
 		ui.selectgrid("Choose Block", Vars.content.blocks(), b => {
 			blockstat = b;
+			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(blockstat.uiIcon));
 			if (blockStatsTable != null){updatestats(blockStatsTable, blockstat)};
 		}, null, bicons, vars.blocksperrow);
-	});
+	}).width(300).get();
 };
 
 

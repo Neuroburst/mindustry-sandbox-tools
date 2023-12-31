@@ -15,7 +15,9 @@ var searchWidth = 500;
 var iconSize = 42;
 
 var BarPad = 1;
-var BarDist = 75;
+var BarDist = 72;
+
+var iconRoom = "   ";
 
 module.exports = {
     TCOffset : TCOffset,
@@ -31,4 +33,5 @@ module.exports = {
     BarPad : BarPad,
     mobilePad : mobilePad,
     mobileDist : mobileDist,
+    iconRoom : iconRoom,
 }

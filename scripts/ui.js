@@ -4,10 +4,12 @@ var selectdialog = null;
 var selectgriddialog = null;
 
 /* UI Creation and Utilities (Essentially re-writing certain parts of ui-lib) */
-function createButton(parent, superparent, name, icon, tooltip, style, clicked){
-	const cell = parent.button(icon, style, vars.iconSize, ()=>{});
+function createButton(parent, superparent, name, icon, tooltip, style, return_cell, clicked){
+	var cell = parent.button(icon, style, vars.iconSize, ()=>{});
 	cell.name(name);
-	cell.tooltip(tooltip)
+	if (tooltip != "") {
+		cell.tooltip(tooltip)
+	}
 	let button = cell.get();
 	let bstyle = button.style;
 
@@ -20,8 +22,13 @@ function createButton(parent, superparent, name, icon, tooltip, style, clicked){
 			}
 		});
 	};
-	superparent.add(button).pad(vars.BarPad).left().size(vars.buttonWidth, vars.buttonHeight);
-	return button;
+	if (superparent){superparent.add(button).pad(vars.BarPad).left().size(vars.buttonWidth, vars.buttonHeight)};
+	if (return_cell){
+		return cell;
+	}else{
+		return button
+	}
+	
 };
 
 function instanceButton(icon, tooltip, style, clicked){ // unused
