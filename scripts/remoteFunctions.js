@@ -1,6 +1,10 @@
 const localF = require("localFunctions");
 
 /* Multiplayer Functions */
+function definefindp() {
+	Call.sendChatMessage("/js findp = name => Groups.player.find(e=>Strings.stripColors(e.name)==name)");
+};
+
 function spawnRemote() {
 	const unitcode = "UnitTypes." + spawning.name;
 	const fusecode = "UnitTypes." + fuser.name;

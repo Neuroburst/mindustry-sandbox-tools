@@ -2,9 +2,10 @@ const vars = require("vars")
 
 var selectdialog = null;
 var selectgriddialog = null;
-/* UI Creation (Essentially re-writing certain parts of ui-lib) */
-function createButton(t, it, name, icon, tooltip, style, clicked){
-	const cell = t.button(icon, style, vars.iconSize, ()=>{});
+
+/* UI Creation and Utilities (Essentially re-writing certain parts of ui-lib) */
+function createButton(parent, superparent, name, icon, tooltip, style, clicked){
+	const cell = parent.button(icon, style, vars.iconSize, ()=>{});
 	cell.name(name);
 	cell.tooltip(tooltip)
 	let button = cell.get();
@@ -19,7 +20,7 @@ function createButton(t, it, name, icon, tooltip, style, clicked){
 			}
 		});
 	};
-	it.add(button).pad(vars.BarHeight).left().size(vars.buttonWidth, vars.buttonHeight);
+	superparent.add(button).pad(vars.BarPad).left().size(vars.buttonWidth, vars.buttonHeight);
 	return button;
 };
 
@@ -84,7 +85,17 @@ function selectgrid(title, values, selector, names, icons, numperrow){
 		selectgriddialog.show();
 	});
 };
+
+
+// More specific UI stuff
 Events.on(EventType.ClientLoadEvent, cons(() => {
+	if(Vars.mobile){
+		vars.buttonHeight = vars.mobileHeight;
+		vars.buttonWidth = vars.mobileWidth;
+		vars.BarPad = vars.mobilePad;
+		vars.BarDist = vars.mobileDist;
+	};
+	
 	selectdialog = extend(BaseDialog, "<title>", {
 		rebuild(title, values, selector, names, icons) {
 			this.cont.clear();

@@ -1,16 +1,21 @@
 /* UI Param */
 var TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
 
-const unitsperrow = 10
-const blocksperrow = 15
+var unitsperrow = 10
+var blocksperrow = 15
 
-var mobileWidth = 52;
-var mobileHeight = 52;
+var mobileWidth = 55;
+var mobileHeight = 55;
+var mobilePad = 5;
+var mobileDist = 85;
+
 var buttonHeight = 50;
 var buttonWidth = 50;
 var searchWidth = 500;
 var iconSize = 42;
-var BarHeight = 5; // unused
+
+var BarPad = 1;
+var BarDist = 75;
 
 module.exports = {
     TCOffset : TCOffset,
@@ -22,5 +27,8 @@ module.exports = {
     buttonWidth : buttonWidth,
     searchWidth : searchWidth,
     iconSize : iconSize,
-    BarHeight : BarHeight,
+    BarDist : BarDist,
+    BarPad : BarPad,
+    mobilePad : mobilePad,
+    mobileDist : mobileDist,
 }

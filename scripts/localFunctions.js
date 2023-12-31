@@ -12,13 +12,13 @@ function spawnLocal(spos, count, rand, spawning, team, fuser, fuseMode) {
 		if (fuseMode){
 			unit.type = fuser
 		};
-		Fx.spawnShockwave.at(spos.x, spos.y, 0);
+		Fx.pointShockwave.at(spos.x + Tmp.v1.x, spos.y + Tmp.v1.y, 0);
 	}
 };
 
-function spawnblockLocal(bpos, block, team) {
-	Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, 0);
-    Fx.spawnShockwave.at(bpos.x, bpos.y, 0);
+function spawnblockLocal(bpos, block, team, brot) {
+	Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, brot);
+    Fx.placeBlock.at(bpos.x, bpos.y, block.size);
 };
 
 function changeteamLocal(setteam) {
