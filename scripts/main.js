@@ -1,12 +1,12 @@
+// TODO: indicator for block and unit placement location
 // TODO: Remote functions COMPLETELY BROKEN
 
-// TODO: Add thingy that lists Vars too! (especially change survival vs attack vs sandbox)
-// TODO: Allow for more than just editing of bools and numbers (check UnitTypes)
+// TODO: Allow for more than just editing of bools and numbers? (check UnitTypes)
+// TODO: change between sandbox, survival, and attack
 
-// TODO: Custom unit abilities
+
+// TODO: Custom unit "abilities" (check js guide schematic)
 // TODO: Add custom weapon adder
-
-// TODO: Search function for stat menus
 
 
 // remember to use this to find properties/functions
@@ -97,6 +97,7 @@ var tmode;
 var poss;
 var posb;
 var rotb;
+var editWeaponsButton;
 
 // filtering for search
 var ufilter = "";
@@ -371,14 +372,18 @@ function updatestats(filter, table, set) {
 		mode = 2
 	}
 
-	if (table.getCells().size >= 3){
-		table.getCells().get(1).clearElement();
-		table.getCells().remove(1);
-		table.getCells().get(1).clearElement();
-		table.getCells().remove(1);
-	}
+	var amount = 2
 
+	if (mode == 1){amount++};
+
+	if (table.getCells().size >= 3){
+		for (let i = 0; i < amount; i++){
+		table.getCells().get(1).clearElement();
+		table.getCells().remove(1);
+		};
+	};
 	table.row();
+
 	if (mode == 0){
 		table.label(() => "World Rules");
 	}else if (mode == 1){
@@ -483,6 +488,12 @@ function updatestats(filter, table, set) {
 	
 		};
 	}).growX().top().center();
+	table.row();
+	if (mode == 1){
+		editWeaponsButton = table.button("Edit Weapons", Icon.pencil, () => {
+			//ui.select("Weapons", unitstat.weapons)
+		}).width(220);
+	}
 };
 
 
@@ -631,10 +642,10 @@ function createSpawnDialog(){
 	let spawnTable = spawndialog.cont;
 	const i = spawnTable.table().center().top().get();
 	i.defaults().left()
-	let ssearch = i.button(Icon.zoom, Styles.flati, () => {
+	i.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ssearch);
 	}).size(50, 50).get()
-	i.field(ufilter, text => {
+	var ssearch = i.field(ufilter, text => {
 		ufilter = text;
 		updatespawnlist(ufilter, spawnTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
@@ -671,10 +682,10 @@ function createBlockDialog(){
 	let blockTable = blockdialog.cont;
 	const b = blockTable.table().center().top().get();
 	b.defaults().left()
-	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
+	b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
 	}).size(50, 50).get();
-	b.field(bfilter, text => {
+	var bsearch = b.field(bfilter, text => {
 		bfilter = text;
 		updateblocklist(bfilter, blockTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
@@ -705,10 +716,10 @@ function createRulesDialog(){
 
 	const r = rulesTable.table().center().top().get();
 	r.defaults().left()
-	let rsearch = r.button(Icon.zoom, Styles.flati, () => {
+	r.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(rsearch);
 	}).size(50, 50).get();
-	r.field(rfilter, text => {
+	var rsearch = r.field(rfilter, text => {
 		rfilter = text;
 		updatestats(rfilter, rulesTable, Vars.state.rules);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
@@ -725,10 +736,10 @@ function createUnitStatDialog(){
 
 	const u = statsTable.table().center().top().get();
 	u.defaults().left()
-	let ussearch = u.button(Icon.zoom, Styles.flati, () => {
+	u.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ussearch);
 	}).size(50, 50).get();
-	u.field(usfilter, text => {
+	var ussearch = u.field(usfilter, text => {
 		usfilter = text;
 		updatestats(usfilter, statsTable, unitstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
@@ -740,10 +751,14 @@ function createUnitStatDialog(){
 	for (var n = 0; n < Vars.content.units().size; n++) {
 		icons.push(Vars.content.units().get(n).uiIcon)
 	};
-	//spawnerButton.get().getCells().first().get().setDrawable(new TextureRegionDrawable(unitstat.uiIcon));
+	
+	var processedUnits = []
+	for (var n = 0; n < Vars.content.units().size; n++) {
+		processedUnits.push(Vars.content.units().get(n).localizedName)
+	};
 	
 	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(unitstat.uiIcon), "", Styles.defaulti, true, () => {
-		ui.selectgrid("Choose Unit", Vars.content.units(), u => {
+		ui.selectgrid("Choose Unit", processedUnits, u => {
 			unitstat = u;
 			var icon = new TextureRegionDrawable(unitstat.uiIcon)
 			cunit.style.imageUp = icon
@@ -765,22 +780,29 @@ function createBlockStatDialog(){
 
 	const b = blockStatsTable.table().center().top().get();
 	b.defaults().left()
-	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
+	b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
 	}).size(50, 50).get();
-	b.field(bsfilter, text => {
+	var bsearch = b.field(bsfilter, text => {
 		bsfilter = text;
 		updatestats(bsfilter, blockStatsTable, blockstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	blockStatsTable.row();
 	updatestats("", blockStatsTable, blockstat);
 	bstatdialog.addCloseButton();
+
 	var bicons = []
 	for (var n = 0; n < Vars.content.blocks().size; n++) {
 		bicons.push(Vars.content.blocks().get(n).uiIcon)
 	};
+
+	var processedBlocks = []
+	for (var n = 0; n < Vars.content.blocks().size; n++) {
+		processedBlocks.push(Vars.content.blocks().get(n).localizedName)
+	};
+
 	let cblock = bstatdialog.buttons.button("Choose Block", new TextureRegionDrawable(blockstat.uiIcon), 42, () => {
-		ui.selectgrid("Choose Block", Vars.content.blocks(), b => {
+		ui.selectgrid("Choose Block", processedBlocks, b => {
 			blockstat = b;
 			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(blockstat.uiIcon));
 			if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};

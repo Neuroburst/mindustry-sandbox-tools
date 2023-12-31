@@ -2,6 +2,7 @@ const vars = require("vars")
 
 var selectdialog = null;
 var selectgriddialog = null;
+var selectgridfilter = "";
 
 /* UI Creation and Utilities (Essentially re-writing certain parts of ui-lib) */
 function createButton(parent, superparent, name, icon, tooltip, style, return_cell, clicked){
@@ -107,7 +108,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		rebuild(title, values, selector, names, icons) {
 			this.cont.clear();
 			this.title.text = title;
-
 			this.cont.pane(t => {
 				for (var i in values) {
 					const key = i;
@@ -131,12 +131,22 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	selectdialog.addCloseButton();
 
 	selectgriddialog = extend(BaseDialog, "<title>", {
-		rebuild(title, values, selector, names, icons, numperrow) {
-			this.cont.clear();
-			this.title.text = title;
+		refresh(values, selector, names, icons, numperrow){
+			if (this.cont.getCells().size >= 2){
+				this.cont.getCells().get(1).clearElement();
+				this.cont.getCells().remove(1);
+			}
+			this.cont.row();
 			this.cont.pane(t => {
 				var it = 0;
-				for (var i in values){	
+				for (var i in values){
+					if (selectgridfilter && selectgridfilter.trim().length > 0){
+						let cfilter = selectgridfilter.trim().toLowerCase()
+						if (!String(names(i, values[i])).toLowerCase().includes(cfilter)){
+							continue
+						}
+					};
+
 					const key = i;	
 					if (it++ % numperrow == 0) {
 						t.row();
@@ -148,6 +158,23 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 					}).size(76).tooltip(names(i, values[i]));
 				};
 			}).growX().top().left();
+		},
+
+		rebuild(title, values, selector, names, icons, numperrow) {
+			this.cont.clear();
+			selectgridfilter = ""
+			this.title.text = title;
+			const s = this.cont.table().center().top().get();
+			s.defaults().left()
+			s.button(Icon.zoom, Styles.flati, () => {
+				Core.scene.setKeyboardFocus(search);
+			}).size(50, 50).get();
+			var search = s.field(selectgridfilter, text => {
+				selectgridfilter = text;
+				this.refresh(values, selector, names, icons, numperrow);
+			}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+			this.refresh(values, selector, names, icons, numperrow);
+
 		}
 	});
 	selectgriddialog.addCloseButton();
@@ -155,7 +182,6 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 module.exports = {
     createButton : createButton,
-    instanceButton : instanceButton,
     select : select,
     selectgrid : selectgrid,
 }
