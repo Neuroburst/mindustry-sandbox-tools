@@ -1,5 +1,5 @@
-/* Local Fucntions */
-function spawnLocal() {
+/* Local Functions */
+function spawnLocal(spos, count, rand, spawning, team, fuser, fuseMode) {
 	for (var n = 0; n < count; n++) {
 		Tmp.v1.rnd(Mathf.random(rand * Vars.tilesize));
 
@@ -16,18 +16,19 @@ function spawnLocal() {
 	}
 };
 
-function spawnblockLocal() {
+function spawnblockLocal(bpos, block, team) {
 	Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, 0);
+    Fx.spawnShockwave.at(bpos.x, bpos.y, 0);
 };
 
 function changeteamLocal(setteam) {
 	Vars.player.team(setteam);
 };
 
-function applyLocal(perma) {
+function applyLocal(effect, duration, perma) {
 	let p = Vars.player.unit();
 	if(p != null){
-		p.apply(effect, perma ? Infinity : duration * 60);
+		p.apply(effect, perma ? Infinity : duration);
 	}
 };
 
@@ -64,38 +65,8 @@ function setRuleLocal(rule, value) {
 	Vars.state.rules[rule] = value;
 };
 
-function setStatLocal(rule, value) {
-	unitstat[rule] = value;
-};
-
-function setbStatLocal(rule, value) {
-	blockstat[rule] = value;
-};
-
-function changeAI(value) {
-	selectedai = value;
-	if (selectedai == "MBuilderAI"){
-		aibutton.style.imageUp = Icon.hammer
-		aibutton.style.imageUpColor = Color.orange
-		playerAI = new BuilderAI();
-
-	}else if (selectedai == "BuilderAI"){
-		aibutton.style.imageUp = Icon.hammer
-		aibutton.style.imageUpColor = Color.royal
-		playerAI = new BuilderAI();
-	}else if (selectedai == "RepairAI"){
-		aibutton.style.imageUp = Icon.modeSurvival
-		aibutton.style.imageUpColor = Color.acid
-		playerAI = new RepairAI();
-	}else if (selectedai == "None"){
-		aibutton.style.imageUp = Icon.logic
-		aibutton.style.imageUpColor = Color.white
-		playerAI = null
-	} else {
-		aibutton.style.imageUp = Icon.add
-		aibutton.style.imageUpColor = Color.scarlet
-		playerAI = eval("new " + selectedai + "()");
-	}
+function setStatLocal(stat, rule, value) {
+	stat[rule] = value;
 };
 
 function clearbannedLocal(){
@@ -111,3 +82,16 @@ function clearbannedLocal(){
 		
 	});
 };
+
+module.exports = {
+    spawnLocal : spawnLocal,
+    spawnblockLocal : spawnblockLocal,
+    changeteamLocal : changeteamLocal,
+    applyLocal : applyLocal,
+    killLocal : killLocal,
+    clearLocal : clearLocal,
+    healLocal : healLocal,
+    setRuleLocal : setRuleLocal,
+    setStatLocal : setStatLocal,
+    clearbannedLocal : clearbannedLocal,
+}

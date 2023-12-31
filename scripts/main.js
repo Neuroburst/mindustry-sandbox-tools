@@ -22,7 +22,7 @@ const blocksperrow = 15
 const maxCount = 100;
 const maxRand = 10;
 
-const maxDuration = 320;
+const maxDuration = 600;
 
 const spos = new Vec2(-1, -1);
 const bpos = new Vec2(-1, -1);
@@ -41,7 +41,6 @@ var block = Blocks.coreNucleus;
 
 var rand = 2;
 
-var initialized = false;
 var fuseMode = false;
 
 var playername = "";
@@ -53,7 +52,6 @@ var selectedai = "None";
 var playerAI = null;
 
 /* Ui Elements */
-var healthUI
 var spawndialog = null, button = null;
 var effectdialog = null, button = null;
 var blockdialog = null, button = null;
@@ -72,11 +70,7 @@ var playertable = new Table().bottom().left();
 var sbutton;
 var ebutton;
 var bbutton;
-var gbutton;
-var stbutton;
-var bstbutton;
-var stubutton;
-var aibutton
+var aibutton;
 
 var spawnerButton;
 var spawningLabelText;
@@ -86,6 +80,7 @@ let mobileWidth = 52;
 let mobileHeight = 52;
 let buttonHeight = 50;
 let buttonWidth = 50;
+let searchWidth = 500;
 let iconSize = 42;
 let BarHeight = 5;
 
@@ -175,7 +170,6 @@ function click(handler, world){
 };
 
 Events.run(Trigger.update, () => {
-	print(localF.frog)
 	if (teamRect && bteamRect){
 		teamRect.tint.set(team.color);
 		bteamRect.tint.set(team.color);
@@ -259,35 +253,63 @@ function selectgrid(title, values, selector, names, icons, numperrow){
 //---
 
 function spawn() {
-	(Vars.net.client() ? remoteF.spawnRemote() : localF.spawnLocal())();
+	(Vars.net.client() ? remoteF.spawnRemote : localF.spawnLocal)(spos, count, rand, spawning, team, fuser, fuseMode);
 };
 
 function spawnblock() {
-	(Vars.net.client() ? remoteF.spawnblockRemote() : localF.spawnblockLocal())();
+	(Vars.net.client() ? remoteF.spawnblockRemote : localF.spawnblockLocal)(bpos, block, team);
 };
 
-function apply() {
-	(Vars.net.client() ? remoteF.applyRemote() : localF.applyLocal())(false);
-};
-
-function kill() {
-	(Vars.net.client() ? remoteF.killRemote() : localF.killLocal())();
+function apply(perma) {
+	if (!perma){perma = false}
+	(Vars.net.client() ? remoteF.applyRemote : localF.applyLocal)(effect, duration * 60, perma);
 };
 
 function applyperma() {
-	(Vars.net.client() ? remoteF.applyRemote() : localF.applyLocal())(true);
+	apply(true);
+};
+
+function kill() {
+	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)();
 };
 
 function clear() {
-	(Vars.net.client() ? remoteF.clearRemote() : localF.clearLocal())();
+	(Vars.net.client() ? remoteF.clearRemote : localF.clearLocal)();
 };
 
 function clearbanned() {
-	(Vars.net.client() ? remoteF.clearbannedRemote() : localF.clearbannedLocal())();
+	(Vars.net.client() ? remoteF.clearbannedRemote : localF.clearbannedLocal)();
 };
 
 function definefindp() {
 	Call.sendChatMessage("/js findp = name => Groups.player.find(e=>Strings.stripColors(e.name)==name)");
+};
+
+function changeAI(value) {
+	let selectedai = value;
+	if (selectedai == "MBuilderAI"){
+		aibutton.style.imageUp = Icon.hammer
+		aibutton.style.imageUpColor = Color.orange
+		playerAI = new BuilderAI();
+
+	}else if (selectedai == "BuilderAI"){
+		aibutton.style.imageUp = Icon.hammer
+		aibutton.style.imageUpColor = Color.royal
+		playerAI = new BuilderAI();
+	}else if (selectedai == "RepairAI"){
+		aibutton.style.imageUp = Icon.modeSurvival
+		aibutton.style.imageUpColor = Color.acid
+		playerAI = new RepairAI();
+	}else if (selectedai == "None"){
+		aibutton.style.imageUp = Icon.logic
+		aibutton.style.imageUpColor = Color.white
+		playerAI = null
+	} else {
+		aibutton.style.imageUp = Icon.add
+		aibutton.style.imageUpColor = Color.scarlet
+		playerAI = eval("new " + selectedai + "()");
+	}
+    return selectedai
 };
 
 function currentunit(){
@@ -397,8 +419,8 @@ function updatespawnlist(filter, utable){
 	 	click((screen, world) => {
 	 		// We don't need sub-wu precision + make /js output nicer
 	 		spos.set(Math.round(world.x), Math.round(world.y));
-	 		poss.getLabel().text = "Spawn at " + Math.round(spos.x / 8)
-	 			+ ", " + Math.round(spos.y / 8);
+	 		poss.getLabel().text = "Set Position (" + Math.round(spos.x / 8)
+	 			+ ", " + Math.round(spos.y / 8) + ")";
 	 			spawndialog.show();
 		}, true);
 	}).width(300).get();
@@ -507,10 +529,10 @@ function updatestats(table, list, set) {
 						(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 						enabled = Vars.state.rules[setstat];
 					}else if (mode == 1){
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(setstat, !unitstat[setstat]);
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(unitstat, setstat, !unitstat[setstat]);
 						enabled = unitstat[setstat];
 					}else{
-						(Vars.net.client() ? setbStatRemote : localF.setbStatLocal)(setstat, !blockstat[setstat]);
+						(Vars.net.client() ? setbStatRemote : localF.setStatLocal)(blockstat, setstat, !blockstat[setstat]);
 						enabled = blockstat[setstat];
 					};
 
@@ -560,13 +582,13 @@ function updatestats(table, list, set) {
 						vField.validator = text => !isNaN(parseFloat(text));
 					}else if (mode == 1){
 						var vField = vd.field(unitstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(setstat, parseFloat(text));
+							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(unitstat, setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 
 					}else {
 						var vField = vd.field(blockstat[setstat], text => {
-							(Vars.net.client() ? setbStatRemote : localF.setbStatLocal)(setstat, parseFloat(text));
+							(Vars.net.client() ? setbStatRemote : localF.setStatLocal)(blockstat, setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 					};
@@ -583,59 +605,6 @@ Events.on(EventType.WorldLoadEvent, e => {
 	if (gtable != null){updatestats(gtable, rulelist, Vars.state.rules)};
 	if (stable != null){updatestats(stable, statlist, unitstat)};
 	if (bstable != null){updatestats(bstable, bstatlist, blockstat)};
-
-	initialized = true
-	if(!initialized){
-		healthUI = Vars.ui.hudGroup.children.get(3).children.get(Vars.mobile ? 2 : 0).children.get(0).children.get(0).children.get(0);
-		healthUI.row();
-		let kbutton = instanceButton(Icon.commandAttack, "Kill the current unit", Styles.defaulti, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-	 			return;
-	 		};
-			
-	 		Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
-	 		kill();
-	 	});
-
-		let hbutton = instanceButton(Icon.add, "Heal to full health", Styles.defaulti, () => {
-	 		if (Vars.state.rules.sector) {
-	 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-	 			return;
-	 		};
-		
-	 		Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
-	 	 	(Vars.net.client() ? healRemote : localF.healLocal)(false);
-	 	});
-
-	 	let ibutton = instanceButton(Icon.modeSurvival, "Become Invincible", Styles.defaulti, () => {
-	 		if (Vars.state.rules.sector) {
-	 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-	 			return;
-	 		};
-	 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
-	 		(Vars.net.client() ? healRemote : localF.healLocal)(true);
-	    });
-
-	   
-	 	ebutton = instanceButton(Icon.effect, "Apply status effects", Styles.defaulti, () => {
-	 		if (Vars.state.rules.sector) {
-	 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-	 			return;
-	 		};
-	 		effectdialog.show();
-	 	});
-	   
-	 	healthUI.add(kbutton).size(buttonWidth, buttonHeight).pad(5).left().padLeft(0);
-	 	healthUI.add(hbutton).size(buttonWidth, buttonHeight).pad(5).left().padLeft(-50);
-	 	healthUI.add(ibutton).size(buttonWidth, buttonHeight).pad(5).left().padLeft(-110);
-	 	healthUI.add(ebutton).size(buttonWidth, buttonHeight).pad(5).left().padLeft(-40);
-
-	 	kbutton.style.imageUpColor = Color.scarlet
-	 	hbutton.style.imageUpColor = Color.acid;
-	 	ibutton.style.imageUpColor = Color.sky;
-	 	initialized = true;
-	};
 });
 
 Events.on(EventType.ClientLoadEvent, cons(() => {
@@ -653,7 +622,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 				for (var i in values) {
 					const key = i;
 					if (icons){
-						t.button(names(i, values[i]), new TextureRegionDrawable(icons[i]), 40, () => {
+						t.button(names(i, values[i]), new TextureRegionDrawable(icons[i]), iconSize, () => {
 							selector(values[key]);
 							this.hide();
 						}).growX().pad(8);
@@ -711,7 +680,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		t.background(Tex.buttonEdge3);
 		playertableinside = t;
 	})).padBottom(0 + TCOffset).padLeft(0);
-	gbutton = createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
+	createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -720,7 +689,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		gamedialog.show();
 	});
 
-	stbutton = createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
+	createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -729,7 +698,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		statdialog.show();
 	});
 
-	bstbutton = createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
+	createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -761,7 +730,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	var bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bbteamRect.tint.set(Vars.player.team().color);
-	let teambutton = createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, () => {
+	createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -774,7 +743,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
    });
 
 	aibutton = createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, () => {
-		select("Choose player AI", ais, changeAI, ais, null)
+		select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
 
 	ebutton = createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, () => {
@@ -785,7 +754,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	 	effectdialog.show();
 	});
 
-	let ibutton = createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, () => {
+	createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -793,7 +762,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
 		(Vars.net.client() ? healRemote : localF.healLocal)(true);
 	});
-	let hbutton = createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
+	createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
 	if (Vars.state.rules.sector) {
 		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 		return;
@@ -836,11 +805,11 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	i.defaults().left()
 	let ssearch = i.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ssearch);
-	}).size(50).get()
+	}).size(buttonWidth, buttonHeight).get()
 	i.field(ufilter, text => {
 		ufilter = text;
 		updatespawnlist(ufilter, table)
-	}).padBottom(4).growX().size(500, 50).tooltip("Search").get();
+	}).padBottom(4).growX().size(searchWidth, buttonHeight).tooltip("Search").get();
 	table.row();
 
 	table.label(() => spawningLabelText);
@@ -871,11 +840,11 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	b.defaults().left()
 	let bsearch = b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
-	}).size(50).get();
+	}).size(buttonWidth, buttonHeight).get();
 	b.field(bfilter, text => {
 		bfilter = text;
 		updateblocklist(bfilter, btable)
-	}).padBottom(4).growX().size(500, 50).tooltip("Search").get();
+	}).padBottom(4).growX().size(searchWidth, buttonHeight).tooltip("Search").get();
 	btable.row();
 
 	btable.label(() => block.localizedName);
@@ -945,9 +914,9 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	blockdialog.buttons.button("Place", Icon.add, spawnblock)
 		.disabled(() => !Vars.world.passable(bpos.x / 8, bpos.y / 8));
 
-	effectdialog.buttons.button("Apply Effect", Icon.add, apply)
+	effectdialog.buttons.button("Apply Effect", Icon.add, apply);
 
-	effectdialog.buttons.button("Apply Permanently", Icon.save, applyperma)
+	effectdialog.buttons.button("Apply Permanently", Icon.save, applyperma);
 
 	effectdialog.buttons.button("Clear Effects", Icon.cancel, clear)
 
@@ -956,7 +925,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	teamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	teamRect.tint.set(team.color);
-	spawndialog.buttons.button("Team", teamRect, 40, () => {
+	spawndialog.buttons.button("Team", teamRect, iconSize, () => {
 	 	select("Team", Team.all, t => {
 	 		team = t;
 	 		teamRect.tint.set(team.color);
@@ -965,7 +934,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	bteamRect.tint.set(team.color);
-	blockdialog.buttons.button("Team", bteamRect, 40, () => {
+	blockdialog.buttons.button("Team", bteamRect, iconSize, () => {
 	 	select("Team", Team.all, t => {
 	 		team = t;
 	 		bteamRect.tint.set(team.color);
