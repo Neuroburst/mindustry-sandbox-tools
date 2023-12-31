@@ -13,7 +13,8 @@
 /* command parameters */
 let TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
 
-const localFunctions = require("localFunctions");
+const localF = require("localFunctions");
+const remoteF = require("remoteFunctions");
 
 const unitsperrow = 10
 const blocksperrow = 15
@@ -45,8 +46,6 @@ var fuseMode = false;
 
 var playername = "";
 
-//var teams = []
-
 const ais = ["None", "MBuilderAI", "BuilderAI", "RepairAI", "AssemblerAI", "BoostAI", "CargoAI", "CommandAI", "DefenderAI", "FlyingAI", "FlyingFollowAI", "GroundAI", "HugAI", "LogicAI", "MinerAI", "MissileAI", "SuicideAI"]
 
 var selectedai = "None";
@@ -69,7 +68,6 @@ var valuedialog = null, button = null;
 
 var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
-//var teamtable = new Table().bottom().left();
 
 var sbutton;
 var ebutton;
@@ -177,6 +175,7 @@ function click(handler, world){
 };
 
 Events.run(Trigger.update, () => {
+	print(localF.frog)
 	if (teamRect && bteamRect){
 		teamRect.tint.set(team.color);
 		bteamRect.tint.set(team.color);
@@ -259,260 +258,32 @@ function selectgrid(title, values, selector, names, icons, numperrow){
 };
 //---
 
-/* Local Fucntions */
-function spawnLocal() {
-	for (var n = 0; n < count; n++) {
-		Tmp.v1.rnd(Mathf.random(rand * Vars.tilesize));
-
-		var unit = spawning.spawn(team, spos.x + Tmp.v1.x, spos.y + Tmp.v1.y);
-
-		// var unit = spawning.create(team);
-		// unit.set(spos.x + Tmp.v1.x, spos.y + Tmp.v1.y);
-		// unit.add();
-
-		if (fuseMode){
-			unit.type = fuser
-		};
-		Fx.spawnShockwave.at(spos.x, spos.y, 0);
-	}
-};
-
-function spawnblockLocal() {
-	Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, 0);
-};
-
-function changeteamLocal(setteam) {
-	Vars.player.team(setteam);
-};
-
-function applyLocal(perma) {
-	let p = Vars.player.unit();
-	if(p != null){
-		p.apply(effect, perma ? Infinity : duration * 60);
-	}
-};
-
-function killLocal() {
-	let p = Vars.player.unit();
-	if(p != null){
-		p.kill();
-	}
-};
-
-function clearLocal() {
-	let p = Vars.player.unit();
-	if(p != null){
-		p.clearStatuses();
-	}
-};
-
-function healLocal(inv) {
-	let p = Vars.player.unit();
-	if(p != null){
-		if (inv == false){
-			p.dead = false;
-			p.maxHealth = p.type.health;
-			p.health = p.maxHealth;
-		}else{
-			p.dead = false;
-			p.maxHealth = Infinity;
-			p.health = Infinity;
-		}
-	}
-};
-
-function setRuleLocal(rule, value) {
-	Vars.state.rules[rule] = value;
-};
-
-function setStatLocal(rule, value) {
-	unitstat[rule] = value;
-};
-
-function setbStatLocal(rule, value) {
-	blockstat[rule] = value;
-};
-
-function changeAI(value) {
-	selectedai = value;
-	if (selectedai == "MBuilderAI"){
-		aibutton.style.imageUp = Icon.hammer
-		aibutton.style.imageUpColor = Color.orange
-		playerAI = new BuilderAI();
-
-	}else if (selectedai == "BuilderAI"){
-		aibutton.style.imageUp = Icon.hammer
-		aibutton.style.imageUpColor = Color.royal
-		playerAI = new BuilderAI();
-	}else if (selectedai == "RepairAI"){
-		aibutton.style.imageUp = Icon.modeSurvival
-		aibutton.style.imageUpColor = Color.acid
-		playerAI = new RepairAI();
-	}else if (selectedai == "None"){
-		aibutton.style.imageUp = Icon.logic
-		aibutton.style.imageUpColor = Color.white
-		playerAI = null
-	} else {
-		aibutton.style.imageUp = Icon.add
-		aibutton.style.imageUpColor = Color.scarlet
-		playerAI = eval("new " + selectedai + "()");
-	}
-};
-
-function clearbannedLocal(){
-	Vars.state.rules.bannedBlocks = new ObjectSet();
-
-	const blocks = Vars.content.blocks();
-	blocks.each(blo => {
-		try{
-			blo.buildVisibility = BuildVisibility.shown;
-		} catch (e){
-			
-		};
-		
-	});
-};
-
-/* Multiplayer Functions */
-function spawnRemote() {
-	const unitcode = "UnitTypes." + spawning.name;
-	const fusecode = "UnitTypes." + fuser.name;
-	const teamcode = "Team." + team.name;
-
-	let code = [
-		// loop optimisation
-		"Tmp.v1.rnd(" + Mathf.random(rand * Vars.tilesize) + ");",
-		"var u=" + unitcode + ".spawn(" + teamcode + "," + spos.x + "+Tmp.v1.x," + spos.y + "+Tmp.v1.y);",
-		"u.type = " + (fuseMode ? fusecode : unitcode),
-	].join("");
-
-	for (var n = 0; n < count; n++) {
-		Call.sendChatMessage("/js " + code);
-	}
-	Call.sendChatMessage("/js " + unitcode + ".allowLegStep = true");
-	Call.sendChatMessage("/js " + fusecode + ".allowLegStep = true");
-	Fx.spawnShockwave.at(spos.x, spos.y, 0);
-};
-
-function spawnblockRemote() {
-	let code = ['Vars.world.tileWorld(' + bpos.x.toString() + ',' + bpos.y.toString() + ').setNet(Vars.content.getByName(ContentType.block, "' + block.name + '"), Team.' + team.name + ', 0)'];
-	Call.sendChatMessage("/js " + code);
-};
-
-function changeteamRemote(setteam) {
-	definefindp();
-
-	let code = ['p=findp("' + playername + '");p.team(Team.' + setteam.name + ')'];
-	Call.sendChatMessage("/js " + code);
-};
-
-function applyRemote(perma) {
-	definefindp();
-
-	let effectname = effect.localizedName;
-	effectname = effectname.charAt(0).toLowerCase() + effectname.slice(1);
-	effectname = effectname.replace(/\s/g, '');
-
-	let code = ['p=findp("' 
-		+ playername + 
-		'");p.unit().apply(StatusEffects.' + 
-		effectname + 
-		',' + 
-		(perma ? Infinity : duration * 60).toString() + 
-		')'
-	];
-	Call.sendChatMessage("/js " + code);
-};
-
-function killRemote() {
-	definefindp();
-
-	let code = ['p=findp("' + playername + '"); p.unit().kill()'];
-	Call.sendChatMessage("/js " + code);
-};
-
-function clearRemote() {
-	definefindp();
-
-	let code = ['p=findp("' + playername + '"); p.unit().clearStatuses()'];
-	Call.sendChatMessage("/js " + code);
-};
-
-function healRemote(inv) {
-	definefindp();
-
-	healLocal(inv);
-
-	let sethealth = 0
-
-	let code = ['p=findp("' 
-	+ playername + 
-	'");p.unit().maxHealth = ' +
-	(inv ? "Infinity" : "p.unit().type.health") +
-	";p.unit().health = p.unit().maxHealth"
-	];
-
-	Call.sendChatMessage("/js " + code);
-};
-
-function setRuleRemote(rule, value, set) {
-	let code = ["Vars.state.rules['" + rule + "']=" + value.toString()];
-
-	Call.sendChatMessage("/js " + code);
-
-	setRuleLocal(rule, value, set);
-};
-
-function setStatRemote(rule, value, set) {
-	let code = ["UnitTypes." + unitstat + "." + rule + "=" + value.toString()];
-
-	Call.sendChatMessage("/js " + code);
-
-	setStatLocal(rule, value, set);
-};
-
-function setbStatRemote(rule, value, set) {
-	let code = ["Blocks." + blockstat + "." + rule + "=" + value.toString()];
-
-	Call.sendChatMessage("/js " + code);
-
-	setbStatLocal(rule, value, set);
-};
-
-function clearbannedRemote(){
-	Call.sendChatMessage("/js const blocks = Vars.content.blocks();blocks.each(blo => {try{blo.buildVisibility = BuildVisibility.shown;}catch (e){};});");
-	Call.sendChatMessage("/js Vars.state.rules.bannedBlocks=new ObjectSet()");
-};
-
 function spawn() {
-	(Vars.net.client() ? spawnRemote : spawnLocal)();
+	(Vars.net.client() ? remoteF.spawnRemote() : localF.spawnLocal())();
 };
 
 function spawnblock() {
-	(Vars.net.client() ? spawnblockRemote : spawnblockLocal)();
+	(Vars.net.client() ? remoteF.spawnblockRemote() : localF.spawnblockLocal())();
 };
 
 function apply() {
-	(Vars.net.client() ? applyRemote : applyLocal)(false);
+	(Vars.net.client() ? remoteF.applyRemote() : localF.applyLocal())(false);
 };
 
 function kill() {
-	(Vars.net.client() ? killRemote : killLocal)();
+	(Vars.net.client() ? remoteF.killRemote() : localF.killLocal())();
 };
 
 function applyperma() {
-	(Vars.net.client() ? applyRemote : applyLocal)(true);
+	(Vars.net.client() ? remoteF.applyRemote() : localF.applyLocal())(true);
 };
 
 function clear() {
-	(Vars.net.client() ? clearRemote : clearLocal)();
+	(Vars.net.client() ? remoteF.clearRemote() : localF.clearLocal())();
 };
 
 function clearbanned() {
-	clearbannedLocal();
-	if(Vars.net.client()){
-		clearbannedRemote();
-	};
+	(Vars.net.client() ? remoteF.clearbannedRemote() : localF.clearbannedLocal())();
 };
 
 function definefindp() {
@@ -733,13 +504,13 @@ function updatestats(table, list, set) {
 					// (this section must be synced)
 					let enabled
 					if (mode == 0){
-						(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 						enabled = Vars.state.rules[setstat];
 					}else if (mode == 1){
-						(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, !unitstat[setstat]);
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(setstat, !unitstat[setstat]);
 						enabled = unitstat[setstat];
 					}else{
-						(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, !blockstat[setstat]);
+						(Vars.net.client() ? setbStatRemote : localF.setbStatLocal)(setstat, !blockstat[setstat]);
 						enabled = blockstat[setstat];
 					};
 
@@ -784,18 +555,18 @@ function updatestats(table, list, set) {
 					// (this section must be synced)
 					if (mode == 0){
 						var vField = vd.field(Vars.state.rules[setstat], text => {
-							(Vars.net.client() ? setRuleRemote : setRuleLocal)(setstat, parseFloat(text));
+							(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 					}else if (mode == 1){
 						var vField = vd.field(unitstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : setStatLocal)(setstat, parseFloat(text));
+							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 
 					}else {
 						var vField = vd.field(blockstat[setstat], text => {
-							(Vars.net.client() ? setbStatRemote : setbStatLocal)(setstat, parseFloat(text));
+							(Vars.net.client() ? setbStatRemote : localF.setbStatLocal)(setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 					};
@@ -807,10 +578,6 @@ function updatestats(table, list, set) {
 	}).growX().top().center();
 	};
 
-
-//Events.on(UnitControlEvent, event => {
-//	if (stable != null){updatestats(stable, statlist, Vars.player.unit().type)};
-//});
 
 Events.on(EventType.WorldLoadEvent, e => {
 	if (gtable != null){updatestats(gtable, rulelist, Vars.state.rules)};
@@ -838,7 +605,7 @@ Events.on(EventType.WorldLoadEvent, e => {
 	 		};
 		
 	 		Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
-	 	 	(Vars.net.client() ? healRemote : healLocal)(false);
+	 	 	(Vars.net.client() ? healRemote : localF.healLocal)(false);
 	 	});
 
 	 	let ibutton = instanceButton(Icon.modeSurvival, "Become Invincible", Styles.defaulti, () => {
@@ -847,7 +614,7 @@ Events.on(EventType.WorldLoadEvent, e => {
 	 			return;
 	 		};
 	 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
-	 		(Vars.net.client() ? healRemote : healLocal)(true);
+	 		(Vars.net.client() ? healRemote : localF.healLocal)(true);
 	    });
 
 	   
@@ -1001,7 +768,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 		};
 
 		select("Team", Team.all, t => {
-			(Vars.net.client() ? changeteamRemote : changeteamLocal)(t);
+			(Vars.net.client() ? changeteamRemote : localF.changeteamLocal)(t);
 			bbteamRect.tint.set(t.color);
 		}, (i, t) => "[#" + t.color + "]" + t, null);
    });
@@ -1024,7 +791,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 			return;
 		};
 		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
-		(Vars.net.client() ? healRemote : healLocal)(true);
+		(Vars.net.client() ? healRemote : localF.healLocal)(true);
 	});
 	let hbutton = createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, () => {
 	if (Vars.state.rules.sector) {
@@ -1033,7 +800,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	};
 
 		Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
-	 	(Vars.net.client() ? healRemote : healLocal)(false);
+	 	(Vars.net.client() ? healRemote : localF.healLocal)(false);
 	});
 	
 	let kbutton = createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, () => {
