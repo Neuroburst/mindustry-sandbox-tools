@@ -13,9 +13,10 @@ var buttonHeight = 50;
 var buttonWidth = 50;
 var searchWidth = 500;
 var iconSize = 42;
-
-var BarPad = 1;
-var BarDist = 72;
+var gridPad = 5;
+var gridButtonSize = 76;
+var BarPad = 2;
+var BarDist = 74;
 
 var iconRoom = "   ";
 
@@ -38,5 +39,7 @@ module.exports = {
     BarPad : BarPad,
     mobilePad : mobilePad,
     mobileDist : mobileDist,
+    gridPad : gridPad,
+    gridButtonSize : gridButtonSize,
     iconRoom : iconRoom,
 }

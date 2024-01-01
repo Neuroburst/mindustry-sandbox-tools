@@ -6,7 +6,11 @@
 
 
 // TODO: Custom unit "abilities" (check js guide schematic)
+
+
 // TODO: Add custom weapon adder
+// TODO: fix general sync issues and tooltipss
+// TODO: Stat menus are messed up (check marks are not in sync)
 
 
 // remember to use this to find properties/functions
@@ -49,7 +53,8 @@ var duration = 30;
 /* Stats */
 var unitstat = vars.defaultUnit
 var blockstat = vars.defaultBlock
-
+var weaponstat = vars.defaultUnit.weapons.get(0)
+var bulletstat = weaponstat.bullet
 
 /* AI */
 var playerAI = null;
@@ -66,6 +71,9 @@ var gamedialog = null
 var statdialog = null
 var bstatdialog = null
 var valuedialog = null
+var weapondialog = null
+var weaponstatdialog = null
+var bulletstatdialog = null
 
 var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
@@ -84,6 +92,9 @@ var blockButton;
 var rulesTable;
 var statsTable;
 var blockStatsTable;
+var weaponTable
+var weaponStatsTable
+var bulletStatsTable
 
 // color rects for team indication
 var steamRect
@@ -105,6 +116,8 @@ var bfilter = "";
 var rfilter = "";
 var usfilter = "";
 var bsfilter = "";
+var wsfilter = "";
+var bufilter = "";
 
 
 /* Remote */
@@ -228,7 +241,7 @@ function updatespawnlist(filter, utable){
 						spawnerButton.style.imageUp = icon;
 					}
 					spawnMenuButton.style.imageUp = icon;
-				}).size(76).tooltip(unit.localizedName);
+				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(unit.localizedName);
 			};
 		});
 	}).growX().top().left());
@@ -241,7 +254,7 @@ function updatespawnlist(filter, utable){
 		rand = n;
 		rField.text = n;
 	}).get();
-	r.add("Randomness: ");
+	r.add(vars.iconRoom + "Spread: ");
 	var rField = r.field("" + rand, text => {
 		rand = parseInt(text);
 		rSlider.value = rand;
@@ -257,7 +270,7 @@ function updatespawnlist(filter, utable){
 		cField.text = n;
 	}).get();
 	
-	t.add("Count: ");
+	t.add(vars.iconRoom + "Count: ");
 	var cField = t.field("" + count, text => {
 		count = parseInt(text);
 		cSlider.value = count;
@@ -332,7 +345,7 @@ function updateblocklist(filter, blockTable){
 					block = blo;
 					blockButton.style.imageUp = icon;
 					placeButton.getCells().first().get().setDrawable(icon);
-				}).size(76).tooltip(blo.localizedName);
+				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(blo.localizedName);
 			}
 		});
 	}).growX().top().center();
@@ -365,16 +378,21 @@ function updatestats(filter, table, set) {
 	// 0 = rules
 	// 1 = unit
 	// 2 = block
+	// 3 = weapon
 	let mode = 0
 	if (set == unitstat) {
 		mode = 1
 	}else if (set == blockstat) {
 		mode = 2
+	}else if (set == weaponstat) {
+		mode = 3
+	}else if (set == bulletstat) {
+		mode = 4
 	}
 
 	var amount = 2
 
-	if (mode == 1){amount++};
+	if (mode == 1){amount += 2};
 
 	if (table.getCells().size >= 3){
 		for (let i = 0; i < amount; i++){
@@ -388,8 +406,12 @@ function updatestats(filter, table, set) {
 		table.label(() => "World Rules");
 	}else if (mode == 1){
 		table.label(() => unitstat.localizedName);
-	}else{
+	}else if (mode == 2) {
 		table.label(() => blockstat.localizedName);
+	}else if (mode == 3){
+		table.label(() => weaponstat.name);
+	}else if (mode == 4){
+		table.label(() => bulletstat.name);
 	};
 	table.row();
 	
@@ -420,9 +442,15 @@ function updatestats(filter, table, set) {
 					}else if (mode == 1){
 						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(unitstat, setstat, !unitstat[setstat]);
 						enabled = unitstat[setstat];
-					}else{
-						(Vars.net.client() ? setbStatRemote : localF.setStatLocal)(blockstat, setstat, !blockstat[setstat]);
+					}else if (mode == 2) {
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(blockstat, setstat, !blockstat[setstat]);
 						enabled = blockstat[setstat];
+					}else if (mode == 3) {
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(weaponstat, setstat, !weaponstat[setstat]);
+						enabled = weaponstat[setstat];
+					}else if (mode == 4) {
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(bulletstat, setstat, !bulletstat[setstat]);
+						enabled = bulletstat[setstat];
 					};
 
 					if (enabled){
@@ -435,7 +463,7 @@ function updatestats(filter, table, set) {
 						statbutton.get().getLabel().text = "[scarlet]" + setstat
 					};
 		
-				}).width(300);
+				}).pad(vars.gridPad).width(300);
 				
 				statbutton.name("boolean")
 
@@ -476,14 +504,24 @@ function updatestats(filter, table, set) {
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
 
-					}else {
+					}else if (mode == 2) {
 						var vField = vd.field(blockstat[setstat], text => {
 							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(blockstat, setstat, parseFloat(text));
 						}).get();
 						vField.validator = text => !isNaN(parseFloat(text));
+					}else if (mode == 3) {
+						var vField = vd.field(weaponstat[setstat], text => {
+							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(weaponstat, setstat, parseFloat(text));
+						}).get();
+						vField.validator = text => !isNaN(parseFloat(text));
+					}else if (mode == 4) {
+						var vField = vd.field(bulletstat[setstat], text => {
+							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(bulletstat, setstat, parseFloat(text));
+						}).get();
+						vField.validator = text => !isNaN(parseFloat(text));
 					};
 					
-				}).width(300);
+				}).pad(vars.gridPad).width(300).tooltip(String(set[setstat])); // TODO : tooltips go out of sync until refreshed
 			};
 	
 		};
@@ -491,9 +529,39 @@ function updatestats(filter, table, set) {
 	table.row();
 	if (mode == 1){
 		editWeaponsButton = table.button("Edit Weapons", Icon.pencil, () => {
-			//ui.select("Weapons", unitstat.weapons)
+			updateweaponslist(weaponTable);
+			weapondialog.show();
+		}).width(220);
+		table.row();
+		table.button("Edit Abilities", Icon.effect, () => {
 		}).width(220);
 	}
+};
+
+function updateweaponslist(wtable){
+	let weapons = unitstat.weapons
+	wtable.clear();
+	wtable.pane(wlist => {
+		weapons.each(weapon => {
+			//for (let weaponstat in weapon) {print(weaponstat)}
+			
+			const icon = new TextureRegionDrawable(weapon.region);
+			// if (weapon.flip){	
+			// 	icon.region.flip(true, false)
+			// 	//icon.region.width = -icon.region.width
+			// }
+			wlist.button(icon, () => {
+				weaponstat = weapon
+				bulletstat = weaponstat.bullet
+				updatestats(wsfilter, weaponStatsTable, weaponstat);
+				weaponstatdialog.show();
+			}).pad(vars.gridPad).size(76).tooltip(weapon.name);
+		});
+		
+		wlist.button(Icon.add, () => {
+				
+		}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip("Add a new weapon");
+	});
 };
 
 
@@ -514,7 +582,7 @@ function createFolderButtons(spawntableinside, playertableinside){
 
 		statdialog.show();
 	});
-	ui.createButton(spawntable, spawntableinside, "Edit", Icon.pencil, "Edit block stats", Styles.defaulti, false,  () => {
+	ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
@@ -611,7 +679,7 @@ function createStatusDialog(){
 			elist.button(icon, () => {
 				effect = eff;
 				statusButton.style.imageUp = icon;
-			}).size(84).tooltip(eff.localizedName);
+			}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(eff.localizedName);
 		});
 	}).growX().top().center();
 	statusTable.row();
@@ -623,7 +691,7 @@ function createStatusDialog(){
 		duration = n;
 		dField.text = n;
 	}).get();
-	d.add("Duration: ");
+	d.add(vars.iconRoom + "Duration: ");
 	dField = d.field("" + duration, text => {
 		duration = parseInt(text);
 		dSlider.value = duration;
@@ -662,11 +730,6 @@ function createSpawnDialog(){
 	}).disabled(() => !Vars.world.passable(spos.x / 8, spos.y / 8)).width(300).get();
 	spawnerButton.label(() => vars.iconRoom + "Spawn")
 
-	// spawnerButton = spawndialog.buttons.button("Spawn", new TextureRegionDrawable(spawning.uiIcon), () => {
-	// 	spawn();
-	// })
-
-
 	steamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	steamRect.tint.set(team.color);
 	spawndialog.buttons.button("Team", steamRect, vars.iconSize, () => {
@@ -677,6 +740,52 @@ function createSpawnDialog(){
 	});
 };
 
+function createWeaponDialog(){
+	weapondialog = new BaseDialog("Weapon Menu");
+	weaponTable = weapondialog.cont;
+	updateweaponslist(weaponTable);
+	weapondialog.addCloseButton();
+};
+
+function createWeaponStatDialog(){
+	weaponstatdialog = new BaseDialog("Weapon Stat Menu");
+	weaponStatsTable = weaponstatdialog.cont;
+
+	const ws = weaponStatsTable.table().center().top().get();
+	ws.defaults().left()
+	ws.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(wssearch);
+	}).size(50, 50).get();
+	var wssearch = ws.field(wsfilter, text => {
+		wsfilter = text;
+		updatestats(wsfilter, weaponStatsTable, weaponstat);
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	weaponStatsTable.row();
+	updatestats("", weaponStatsTable, weaponstat);
+	weaponstatdialog.addCloseButton();
+	weaponstatdialog.buttons.button("Edit Bullet", Icon.pencil, () => {
+		updatestats(bufilter, bulletStatsTable, bulletstat);
+		bulletstatdialog.show()
+	}).width(220);
+};
+function createBulletStatDialog(){
+	bulletstatdialog = new BaseDialog("Bullet Stat Menu");
+	bulletStatsTable = bulletstatdialog.cont;
+
+	const bu = bulletStatsTable.table().center().top().get();
+	bu.defaults().left()
+	bu.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(busearch);
+	}).size(50, 50).get();
+	var busearch = bu.field(bufilter, text => {
+		bufilter = text;
+		updatestats(bufilter, bulletStatsTable, bulletstat);
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	bulletStatsTable.row();
+	updatestats("", bulletStatsTable, bulletstat);
+	bulletstatdialog.addCloseButton();
+}
+
 function createBlockDialog(){
 	blockdialog = new BaseDialog("Block Menu");
 	let blockTable = blockdialog.cont;
@@ -685,9 +794,9 @@ function createBlockDialog(){
 	b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
 	}).size(50, 50).get();
-	var bsearch = b.field(bfilter, text => {
-		bfilter = text;
-		updateblocklist(bfilter, blockTable)
+	var bsearch = b.field(bufilter, text => {
+		bufilter = text;
+		updateblocklist(bufilter, blockTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	blockTable.row();
 
@@ -711,7 +820,7 @@ function createBlockDialog(){
 };
 
 function createRulesDialog(){
-	gamedialog = new BaseDialog("Game Menu");
+	gamedialog = new BaseDialog("Rules Menu");
 	rulesTable = gamedialog.cont;
 
 	const r = rulesTable.table().center().top().get();
@@ -759,7 +868,6 @@ function createUnitStatDialog(){
 	
 	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(unitstat.uiIcon), "", Styles.defaulti, true, () => {
 		ui.selectgrid("Choose Unit", processedUnits, Vars.content.units(), u => {
-			print(u)
 			unitstat = u;
 			var icon = new TextureRegionDrawable(unitstat.uiIcon)
 			cunit.style.imageUp = icon
@@ -894,10 +1002,13 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	// create dialogs
 	createSpawnDialog();
+	createWeaponDialog();
 	createBlockDialog();
 	createStatusDialog();
 	createRulesDialog();
 	createUnitStatDialog();
 	createBlockStatDialog();
+	createWeaponStatDialog();
+	createBulletStatDialog();
 	print("Loaded Sandbox Tools!")
 }));

@@ -151,7 +151,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 					t.button(icon, () => {
 						selector(values[key]);
 						this.hide();
-					}).size(76).tooltip(tooltips[i]);
+					}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(tooltips[i]);
 				};
 			}).growX().top().left();
 		},
