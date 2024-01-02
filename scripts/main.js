@@ -671,6 +671,11 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 		});
 		killButton.update(() => {
 			if(killButton.isPressed()){
+				if (Vars.state.rules.sector) {
+					Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+					return;
+				};
+				
 				h3 += Core.graphics.getDeltaTime() * 60;
 				if(h3 > vars.longPress){
 					kill();
