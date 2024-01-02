@@ -91,12 +91,12 @@ function selectgrid(title, tooltips, values, selector, icons, numperrow){
 
 // More specific UI stuff
 Events.on(EventType.ClientLoadEvent, cons(() => {
-	if(Vars.mobile){
-		vars.buttonHeight = vars.mobileHeight;
-		vars.buttonWidth = vars.mobileWidth;
-		vars.BarPad = vars.mobilePad;
-		vars.BarDist = vars.mobileDist;
-	};
+	// if(Vars.mobile){
+	// 	vars.buttonHeight = vars.mobileHeight;
+	// 	vars.buttonWidth = vars.mobileWidth;
+	// 	vars.BarPad = vars.mobilePad;
+	// 	vars.BarDist = vars.mobileDist;
+	// };
 	
 	selectdialog = extend(BaseDialog, "<title>", {
 		rebuild(title, values, selector, names, icons) {

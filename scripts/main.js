@@ -9,7 +9,7 @@
 
 
 // TODO: Add custom weapon adder
-// TODO: fix general sync issues and tooltipss
+// TODO: fix general sync issues in stat menus and tooltips
 // TODO: Stat menus are messed up (check marks are not in sync)
 
 
@@ -22,10 +22,10 @@ const localF = require("localFunctions");
 const remoteF = require("remoteFunctions");
 
 
-var team = Vars.state.rules.waveTeam;
+var team = vars.defaultTeam;
 
 /* Unit spawning */
-var spos = new Vec2(-1, -1);
+var spos = new Vec2(-100, -100);
 
 const maxRand = 10;
 const maxCount = 100;
@@ -39,7 +39,7 @@ var fuser = vars.defaultUnit;
 
 
 /* Blocks */
-var bpos = new Vec2(-1, -1);
+var bpos = new Vec2(-100, -100);
 var brot = 0
 var block = vars.defaultBlock;
 
@@ -51,6 +51,8 @@ var duration = 30;
 
 
 /* Stats */
+var objectsToCheck = ["shoot"]
+
 var unitstat = vars.defaultUnit
 var blockstat = vars.defaultBlock
 var weaponstat = vars.defaultUnit.weapons.get(0)
@@ -59,10 +61,10 @@ var bulletstat = weaponstat.bullet
 /* AI */
 var playerAI = null;
 const ais = ["None", "MineBuilderAI", "BuilderAI", "RepairAI", "AssemblerAI", "BoostAI", "CargoAI", "CommandAI", "DefenderAI", "FlyingAI", "FlyingFollowAI", "GroundAI", "HugAI", "LogicAI", "MinerAI", "MissileAI", "SuicideAI"]
-var mode = "b"
+var buildMode = "b"
 var selectedai = "None";
 
-
+var folded = false
 /* UI Elements */
 var spawndialog = null
 var statusdialog = null
@@ -97,6 +99,8 @@ var weaponStatsTable
 var bulletStatsTable
 
 // color rects for team indication
+var bbteamRect
+
 var steamRect
 var bteamRect
 
@@ -152,7 +156,7 @@ function applyperma() {
 	apply(true);
 };
 function kill() {
-	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)();
+	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)(vars.instantkill);
 };
 function clear() {
 	(Vars.net.client() ? remoteF.clearRemote : localF.clearLocal)();
@@ -373,6 +377,99 @@ function updateblocklist(filter, blockTable){
 	}).width(300).get();
 };
 
+function traverseStats(filter, slist, set, mode, i){
+	for (let stat in set) {
+		let setstat = stat
+		
+
+		if (Object.prototype.toString.call(set[setstat]) == "[object JavaObject]" && objectsToCheck.includes(setstat)){
+			i = traverseStats(filter, slist, set[setstat], mode, i)
+		};
+
+
+		if (filter && filter.trim().length > 0){
+			let cfilter = filter.trim().toLowerCase()
+   
+			if (!stat.toLowerCase().includes(cfilter)){
+				continue
+			}
+		};
+
+
+		if (Object.prototype.toString.call(set[setstat]) == "[object Boolean]"){
+			if (i++ % 3 == 0) {
+				slist.row();
+			};
+			
+			
+			let statbutton = slist.button(setstat, Icon.cancel, () => {
+				let enabled
+				if (mode == 0){
+					(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+					enabled = Vars.state.rules[setstat];
+				}else{
+					(Vars.net.client() ? setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+					enabled = set[setstat];
+				};
+
+				if (enabled){
+					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
+					statbutton.get().getCells().first().get().setDrawable(icon);
+					statbutton.get().getLabel().text = "[acid]" + setstat
+				}else{
+					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
+					statbutton.get().getCells().first().get().setDrawable(icon);
+					statbutton.get().getLabel().text = "[scarlet]" + setstat
+				};
+	
+			}).pad(vars.gridPad).width(300);
+			
+			statbutton.name("boolean")
+
+			if (set[setstat]){
+				let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
+				statbutton.get().getCells().first().get().setDrawable(icon);
+				statbutton.get().getLabel().text = "[acid]" + setstat
+			}else{
+				let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
+				statbutton.get().getCells().first().get().setDrawable(icon);
+				statbutton.get().getLabel().text = "[scarlet]" + setstat
+			};
+		
+		}else if (Object.prototype.toString.call(set[setstat]) == "[object Number]"){
+			if (i++ % 3 == 0) {
+				slist.row();
+			};
+			
+			let intbutton = slist.button(setstat, () => {
+				intbutton.name("number")
+				valuedialog = null;
+				valuedialog = new BaseDialog("Set Value");
+				valuedialog.show();
+				valuedialog.addCloseButton();
+				valuedialog.buttons.button("Set", Icon.ok, () => {valuedialog.hide()}).width(200).height(60);
+
+				const vd = valuedialog.cont.table().center().bottom().get();
+				vd.defaults().left();
+				var vField
+
+				if (mode == 0){
+					vField = vd.field(Vars.state.rules[setstat], text => {
+						(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
+					}).get();
+				}else{
+					vField = vd.field(set[setstat], text => {
+						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(set, setstat, parseFloat(text));
+					}).get();
+
+				};
+				vField.validator = text => !isNaN(parseFloat(text));
+			}).pad(vars.gridPad).width(300).tooltip(String(set[setstat])); // TODO : tooltips go out of sync until refreshed
+		};
+	};
+	return i;
+}
+
 function updatestats(filter, table, set) {
 	// hardcode
 	// 0 = rules
@@ -416,115 +513,7 @@ function updatestats(filter, table, set) {
 	table.row();
 	
 	table.pane(slist => {
-		let i = 0;
-		for (let stat in set) {
-			if (filter && filter.trim().length > 0){
-				let cfilter = filter.trim().toLowerCase()
-	   
-				if (!stat.toLowerCase().includes(cfilter)){
-					continue
-				}
-			};
-			let setstat = stat
-
-			if (Object.prototype.toString.call(set[setstat]) == "[object Boolean]"){
-				if (i++ % 3 == 0) {
-					slist.row();
-				};
-				
-				
-				let statbutton = slist.button(setstat, Icon.cancel, () => {
-					// (this section must be synced)
-					let enabled
-					if (mode == 0){
-						(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
-						enabled = Vars.state.rules[setstat];
-					}else if (mode == 1){
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(unitstat, setstat, !unitstat[setstat]);
-						enabled = unitstat[setstat];
-					}else if (mode == 2) {
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(blockstat, setstat, !blockstat[setstat]);
-						enabled = blockstat[setstat];
-					}else if (mode == 3) {
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(weaponstat, setstat, !weaponstat[setstat]);
-						enabled = weaponstat[setstat];
-					}else if (mode == 4) {
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(bulletstat, setstat, !bulletstat[setstat]);
-						enabled = bulletstat[setstat];
-					};
-
-					if (enabled){
-						let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
-						statbutton.get().getCells().first().get().setDrawable(icon);
-						statbutton.get().getLabel().text = "[acid]" + setstat
-					}else{
-						let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
-						statbutton.get().getCells().first().get().setDrawable(icon);
-						statbutton.get().getLabel().text = "[scarlet]" + setstat
-					};
-		
-				}).pad(vars.gridPad).width(300);
-				
-				statbutton.name("boolean")
-
-				if (set[setstat]){
-					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
-					statbutton.get().getCells().first().get().setDrawable(icon);
-					statbutton.get().getLabel().text = "[acid]" + setstat
-				}else{
-					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
-					statbutton.get().getCells().first().get().setDrawable(icon);
-					statbutton.get().getLabel().text = "[scarlet]" + setstat
-				};
-			
-			}else if (Object.prototype.toString.call(set[setstat]) == "[object Number]"){
-				if (i++ % 3 == 0) {
-					slist.row();
-				};
-				
-				let intbutton = slist.button(setstat, () => {
-					intbutton.name("number")
-					valuedialog = null;
-					valuedialog = new BaseDialog("Set Value");
-					valuedialog.show();
-					valuedialog.addCloseButton();
-					valuedialog.buttons.button("Set", Icon.ok, () => {valuedialog.hide()}).width(200).height(60);
-
-					const vd = valuedialog.cont.table().center().bottom().get();
-					vd.defaults().left();
-					// (this section must be synced)
-					if (mode == 0){
-						var vField = vd.field(Vars.state.rules[setstat], text => {
-							(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
-						}).get();
-						vField.validator = text => !isNaN(parseFloat(text));
-					}else if (mode == 1){
-						var vField = vd.field(unitstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(unitstat, setstat, parseFloat(text));
-						}).get();
-						vField.validator = text => !isNaN(parseFloat(text));
-
-					}else if (mode == 2) {
-						var vField = vd.field(blockstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(blockstat, setstat, parseFloat(text));
-						}).get();
-						vField.validator = text => !isNaN(parseFloat(text));
-					}else if (mode == 3) {
-						var vField = vd.field(weaponstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(weaponstat, setstat, parseFloat(text));
-						}).get();
-						vField.validator = text => !isNaN(parseFloat(text));
-					}else if (mode == 4) {
-						var vField = vd.field(bulletstat[setstat], text => {
-							(Vars.net.client() ? setStatRemote : localF.setStatLocal)(bulletstat, setstat, parseFloat(text));
-						}).get();
-						vField.validator = text => !isNaN(parseFloat(text));
-					};
-					
-				}).pad(vars.gridPad).width(300).tooltip(String(set[setstat])); // TODO : tooltips go out of sync until refreshed
-			};
-	
-		};
+		traverseStats(filter, slist, set, mode, 0)
 	}).growX().top().center();
 	table.row();
 	if (mode == 1){
@@ -566,96 +555,128 @@ function updateweaponslist(wtable){
 
 
 // UI Creation
-function createFolderButtons(spawntableinside, playertableinside){
-	ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
-		gamedialog.show();
-	});
-	ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, false, () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
+function createFolderButtons(spawntableinside, playertableinside, cheats, spawns){
+	if (spawns){
+		ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+			gamedialog.show();
+		});
+		ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
 
-		statdialog.show();
-	});
-	ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
+			statdialog.show();
+		});
+		ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
 
-		bstatdialog.show();
-	}, 0);
-	let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
-	spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, false,  () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
+			bstatdialog.show();
+		}, 0);
+		let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
+		spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
 
-		spawndialog.show();
-	});
-	let blockicon = new TextureRegionDrawable(block.uiIcon);
-	blockButton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, false,  () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
+			spawndialog.show();
+		});
+		let blockicon = new TextureRegionDrawable(block.uiIcon);
+		blockButton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
 
-		blockdialog.show();
-	});
-	var bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
-	bbteamRect.tint.set(Vars.player.team().color);
-	ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
+			blockdialog.show();
+		});
+	}
+	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.up : Icon.down), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
+		folded = !folded
+		
+		if (folded){
+			spawntable.visible = false
+			playertableinside.clear()
+			createFolderButtons(spawntableinside, playertableinside, false, false)
+		}else{
 
-		ui.select("Team", Team.all, t => {
-			(Vars.net.client() ? changeteamRemote : localF.changeteamLocal)(t);
-			bbteamRect.tint.set(t.color);
-		}, (i, t) => "[#" + t.color + "]" + t, null);
+			spawntable.visible = true
+			playertableinside.clear()
+			createFolderButtons(spawntableinside, playertableinside, true, false)
+		}
+		
 	});
+	if (cheats){
+		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
+		bbteamRect.tint.set(Vars.player.team().color);
+		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+
+			ui.select("Team", Team.all, t => {
+				(Vars.net.client() ? changeteamRemote : localF.changeteamLocal)(t);
+				bbteamRect.tint.set(t.color);
+			}, (i, t) => "[#" + t.color + "]" + t, null);
+		});
+	}
 	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
 		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
-	statusButton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, false,  () => {
+	if (cheats){
+		statusButton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+			statusdialog.show();
+		});
+		ui.createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+			Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
+			(Vars.net.client() ? healRemote : localF.healLocal)(true);
+		});
+		ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
 			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 			return;
 		};
-		statusdialog.show();
-	});
-	ui.createButton(playertable, playertableinside, "Become invincible", Icon.modeSurvival, "Become invincible", Styles.defaulti, false,  () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
-		Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
-		(Vars.net.client() ? healRemote : localF.healLocal)(true);
-	});
-	ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, false,  () => {
-	if (Vars.state.rules.sector) {
-		Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-		return;
+			Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
+			(Vars.net.client() ? healRemote : localF.healLocal)(false);
+		});
+
+		let h3 = 0;
+		let killButton = ui.createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, false,  () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+			
+			Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
+			if(h3 > vars.longPress){return}
+			kill();
+		});
+		killButton.update(() => {
+			if(killButton.isPressed()){
+				h3 += Core.graphics.getDeltaTime() * 60;
+				if(h3 > vars.longPress){
+					kill();
+				}
+			}
+		})
 	};
-		Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
-		(Vars.net.client() ? healRemote : localF.healLocal)(false);
-	});
-	ui.createButton(playertable, playertableinside, "Kill the current unit", Icon.commandAttack, "Kill the player", Styles.defaulti, false,  () => {
-		if (Vars.state.rules.sector) {
-			Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			return;
-		};
-		
-		Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
-		kill();
-	});
 };
 
 function createStatusDialog(){
@@ -918,7 +939,105 @@ function createBlockStatDialog(){
 		}, bicons, vars.blocksperrow);
 	}).width(300).get();
 };
+function createSettings(){
+	const dialog = new BaseDialog("Sandbox Tools Settings");
+    dialog.addCloseButton();
+    dialog.cont.center().pane(p => {
+        p.defaults().height(36).growX();
+        
+		function addTeamSetting(name, def){
+			let teamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 
+			let color = Team[Core.settings.getString(name, def.name)].color
+
+			teamRect.tint.set(color);
+            p.button(vars.iconRoom + name, teamRect, 30, () => {
+				ui.select("Team", Team.all, t => {
+					Core.settings.put(name, t.name);
+					UpdateSettings()
+					teamRect.tint.set(t.color);
+				}, (i, t) => "[#" + t.color + "]" + t, null);
+				
+            }).size(250, 50).pad(vars.gridPad).tooltip("The default team for spawning blocks and units");
+            p.row();
+        }
+
+        function addBoolSetting(name, def, tool){
+            p.check(vars.iconRoom + name, Core.settings.getBool(name, def), () => {
+                Core.settings.put(name, !Core.settings.getBool(name, def));
+				UpdateSettings()
+            }).pad(vars.gridPad).tooltip(tool);
+            p.row();
+        }
+
+		function addIntSetting(name, min, step, def, max, tool){
+			let t = p.table().center().bottom().pad(vars.gridPad).get();
+			t.defaults().left();
+
+			t.add(vars.iconRoom + name);
+			var tSlider = t.slider(min, max, step, Core.settings.getString(name, def), value => {
+				Core.settings.put(name, String(value));
+				UpdateSettings();
+				tField.text = parseFloat(value);
+			
+			}).pad(vars.gridPad).tooltip(tool).get();
+
+			var tField = t.field(Core.settings.getString(name, def), text => {
+				Core.settings.put(name, String(text));
+				UpdateSettings();
+			 	tSlider.value = parseFloat(text);
+			}).pad(vars.gridPad).get();
+			tField.validator = text => !isNaN(parseFloat(text));
+            p.row();
+        }
+
+		function addLabel(text){
+			p.label(() => text).width(100).padTop(50).center()
+			p.row();
+		}
+        // function addOptionSetting(name, def){
+        //     p.button(name, () => {
+		// 		bbteamRect.tint.set(Vars.player.team().color);
+		// 		ui.select("Team", Team.all, t => {
+		// 			//Core.settings.put(name, !Core.settings.getBool(name, def));
+		// 			UpdateSettings()
+		// 			bbteamRect.tint.set(t.color);
+		// 		}, (i, t) => "[#" + t.color + "]" + t, null);
+				
+        //     }).width(200).pad(vars.gridPad);
+        //     p.row();
+        // }
+        addLabel("- - -  UI  - - -")
+		addBoolSetting("Start Folded", false, "Whether or not to make the Sandbox Tools shelf folded by default (Restart required to take effect)")
+		addIntSetting("Button Padding", 0, 0.25, 2, 20, "The Padding between the buttons in the Sandbox Tools shelf (Restart required to take effect)")
+		addIntSetting("Units per row", 1, 1, 10, 30, "The amounts of units shown per row")
+		addIntSetting("Blocks per row", 0, 1, 15, 30, "The amount of blocks shown per row")
+
+		addLabel("- - -  Other  - - -")
+		addBoolSetting("Instant Kill", false, "Instantly Die.")
+		addTeamSetting("Default Team", Team.sharded)
+		
+    }).growY().growX();
+    
+    Vars.ui.settings.shown(() => {
+        Vars.ui.settings.children.get(1).children.get(0).children.get(0).row();
+        Vars.ui.settings.children.get(1).children.get(0).children.get(0).button("Sandbox Tools", Icon.crafting, Styles.cleart, () => {
+            dialog.show();
+		});
+	});
+};
+
+function UpdateSettings(){
+    vars.startFolded = Core.settings.getBool("Start Folded");
+	vars.BarPad = parseFloat(Core.settings.getString("Button Padding"));
+	vars.unitsperrow = parseFloat(Core.settings.getString("Units per row"));
+	vars.blocksperrow = parseFloat(Core.settings.getString("Blocks per row"));
+	vars.defaultTeam = Team[Core.settings.getString("Default Team")]
+
+	vars.instantkill = Core.settings.getBool("Instant Kill");
+	team = vars.defaultTeam;
+
+}
 
 // Events
 Events.run(Trigger.update, () => {
@@ -930,14 +1049,14 @@ Events.run(Trigger.update, () => {
 	// Automatically switch between Miner and Builder AI
 	if (playerAI){
 		if (selectedai == "MineBuilderAI" && Vars.player.unit().type.mineSpeed > 0 && Vars.player.unit().plans.size == 0){
-			if (mode == "b"){
+			if (buildMode == "b"){
 				playerAI = new MinerAI()
-				mode = "m"
+				buildMode = "m"
 			};
 		}else{
-			if (mode == "m"){
+			if (buildMode == "m"){
 				playerAI = new BuilderAI()
-				mode = "b"
+				buildMode = "b"
 			};
 		};
 	};
@@ -945,7 +1064,9 @@ Events.run(Trigger.update, () => {
 
 
 	if (Vars.ui.hudGroup){
-		spawntable.visible = Vars.ui.hudGroup.children.get(3).visible
+		if (!folded){
+			spawntable.visible = Vars.ui.hudGroup.children.get(3).visible
+		}
 		playertable.visible = Vars.ui.hudGroup.children.get(3).visible
 	}
 
@@ -969,13 +1090,16 @@ Events.run(Trigger.update, () => {
 });
 
 Events.on(EventType.WorldLoadEvent, e => {
+	UpdateSettings()
 	// Update tables
 	if (rulesTable != null){updatestats(rfilter, rulesTable, Vars.state.rules)};
-	if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
-	if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};
+	bbteamRect.tint.set(Vars.player.team().color);
 });
 
 Events.on(EventType.ClientLoadEvent, cons(() => {
+	createSettings();
+	UpdateSettings()
+
 	// Multiplayer
 	playername = Core.settings.getString("name").trim();
 
@@ -989,7 +1113,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	spawntable.table(Styles.black5, cons(t => {
 	t.background(Tex.buttonEdge3);
 	spawntableinside = t;
-	})).padBottom(vars.BarDist + vars.TCOffset).padLeft(0).name("SpawnTable");
+	})).padBottom(vars.BarDist + (vars.BarPad*2) + vars.TCOffset).padLeft(0).name("SpawnTable");
 
 	var playertableinside;
 	playertable.table(Styles.black5, cons(t => {
@@ -998,7 +1122,14 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	})).padBottom(0 + vars.TCOffset).padLeft(0);
 
 	// create buttons in folders
-	createFolderButtons(spawntableinside, playertableinside);
+	createFolderButtons(spawntableinside, playertableinside, true, true);
+
+	if (vars.startFolded){
+		folded = true
+		spawntable.visible = false
+		playertableinside.clear()
+		createFolderButtons(spawntableinside, playertableinside, false, false)
+	}
 
 	// create dialogs
 	createSpawnDialog();

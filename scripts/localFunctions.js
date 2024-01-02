@@ -32,10 +32,16 @@ function applyLocal(effect, duration, perma) {
 	}
 };
 
-function killLocal() {
+function killLocal(instant) {
 	let p = Vars.player.unit();
 	if(p != null){
 		p.kill();
+		if(instant){ // I n s t a n t l y    d i e
+			p.elevation = 0;
+			p.health = -1;
+			p.dead = true;
+			p.destroy();
+		}
 	}
 };
 

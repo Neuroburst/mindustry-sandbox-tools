@@ -1,13 +1,14 @@
 /* UI Param */
 var TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
+const BarDist = 70;
+
 
 var unitsperrow = 10
 var blocksperrow = 15
 
-var mobileWidth = 55;
-var mobileHeight = 55;
-var mobilePad = 5;
-var mobileDist = 85;
+// var mobileWidth = 55;
+// var mobileHeight = 55;
+// var mobilePad = 5;
 
 var buttonHeight = 50;
 var buttonWidth = 50;
@@ -16,12 +17,17 @@ var iconSize = 42;
 var gridPad = 5;
 var gridButtonSize = 76;
 var BarPad = 2;
-var BarDist = 74;
 
 var iconRoom = "   ";
 
 var defaultUnit = UnitTypes.dagger
 var defaultBlock = Blocks.coreNucleus
+var defaultTeam = Vars.state.rules.waveTeam
+
+var longPress = 30;
+
+var startFolded = false
+var instantkill = false
 
 module.exports = {
     defaultUnit : defaultUnit,
@@ -29,17 +35,17 @@ module.exports = {
     TCOffset : TCOffset,
     unitsperrow : unitsperrow,
     blocksperrow : blocksperrow,
-    mobileWidth : mobileWidth,
-    mobileHeight : mobileHeight,
     buttonHeight : buttonHeight,
     buttonWidth : buttonWidth,
     searchWidth : searchWidth,
     iconSize : iconSize,
     BarDist : BarDist,
     BarPad : BarPad,
-    mobilePad : mobilePad,
-    mobileDist : mobileDist,
     gridPad : gridPad,
     gridButtonSize : gridButtonSize,
     iconRoom : iconRoom,
+    startFolded : startFolded,
+    defaultTeam : defaultTeam,
+    instantkill : instantkill,
+    longPress : longPress,
 }
