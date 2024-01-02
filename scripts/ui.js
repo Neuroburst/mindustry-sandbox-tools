@@ -77,13 +77,13 @@ function select(title, values, selector, names, icons){
 };
 
 // selection menu with grid view
-function selectgrid(title, tooltips, values, selector, icons, numperrow){
+function selectgrid(title, tooltips, values, selector, icons, numperrow, defaultText){
 	if (values instanceof Seq) {
 		values = values.toArray();
 	};
 
 	Core.app.post(() => {
-		selectgriddialog.rebuild(title, tooltips, values, selector, icons, numperrow);
+		selectgriddialog.rebuild(title, tooltips, values, selector, icons, numperrow, defaultText);
 		selectgriddialog.show();
 	});
 };
@@ -156,7 +156,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 			}).growX().top().left();
 		},
 
-		rebuild(title, tooltips, values, selector, icons, numperrow) {
+		rebuild(title, tooltips, values, selector, icons, numperrow, defaultText) {
 			this.cont.clear();
 			selectgridfilter = ""
 			this.title.text = title;
@@ -169,6 +169,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 				selectgridfilter = text;
 				this.refresh(tooltips, values, selector, icons, numperrow);
 			}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+			search.setMessageText(defaultText)
 			this.refresh(tooltips, values, selector, icons, numperrow);
 
 		}

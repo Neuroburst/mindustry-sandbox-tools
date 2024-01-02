@@ -9,8 +9,8 @@
 
 
 // TODO: Add custom weapon adder
-// TODO: fix general sync issues in stat menus and tooltips
-// TODO: Stat menus are messed up (check marks are not in sync)
+// TODO: fix general sync issues in stat menus and tooltips (I think it's fixed [except for tooltips])
+// TODO: Stat menus are messed up (check marks are not in sync)? (I think it's fixed)
 
 
 // remember to use this to find properties/functions
@@ -170,11 +170,12 @@ function changeAI(value) {
 		aiButton.style.imageUp = Icon.hammer
 		aiButton.style.imageUpColor = Color.orange
 		playerAI = new BuilderAI();
-
+		playerAI.rebuildPeriod = vars.rebuildPeriod;
 	}else if (selectedai == "BuilderAI"){
 		aiButton.style.imageUp = Icon.hammer
 		aiButton.style.imageUpColor = Color.royal
 		playerAI = new BuilderAI();
+		playerAI.rebuildPeriod = vars.rebuildPeriod;
 	}else if (selectedai == "RepairAI"){
 		aiButton.style.imageUp = Icon.modeSurvival
 		aiButton.style.imageUpColor = Color.acid
@@ -738,6 +739,7 @@ function createSpawnDialog(){
 		ufilter = text;
 		updatespawnlist(ufilter, spawnTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	ssearch.setMessageText("Search Units")
 	spawnTable.row();
 
 	spawnTable.label(() => spawningLabelText);
@@ -781,6 +783,7 @@ function createWeaponStatDialog(){
 		wsfilter = text;
 		updatestats(wsfilter, weaponStatsTable, weaponstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	wssearch.setMessageText("Search Weapon Stats")
 	weaponStatsTable.row();
 	updatestats("", weaponStatsTable, weaponstat);
 	weaponstatdialog.addCloseButton();
@@ -802,6 +805,7 @@ function createBulletStatDialog(){
 		bufilter = text;
 		updatestats(bufilter, bulletStatsTable, bulletstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	busearch.setMessageText("Search Bullet Stats")
 	bulletStatsTable.row();
 	updatestats("", bulletStatsTable, bulletstat);
 	bulletstatdialog.addCloseButton();
@@ -819,6 +823,7 @@ function createBlockDialog(){
 		bufilter = text;
 		updateblocklist(bufilter, blockTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	bsearch.setMessageText("Search Blocks")
 	blockTable.row();
 
 	blockTable.label(() => block.localizedName);
@@ -853,6 +858,7 @@ function createRulesDialog(){
 		rfilter = text;
 		updatestats(rfilter, rulesTable, Vars.state.rules);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	rsearch.setMessageText("Search Rules")
 	rulesTable.row();
 	updatestats("", rulesTable, Vars.state.rules);
 
@@ -873,6 +879,7 @@ function createUnitStatDialog(){
 		usfilter = text;
 		updatestats(usfilter, statsTable, unitstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	ussearch.setMessageText("Search Unit Stats")
 	statsTable.row();
 	updatestats("", statsTable, unitstat);
 	statdialog.addCloseButton();
@@ -893,7 +900,7 @@ function createUnitStatDialog(){
 			var icon = new TextureRegionDrawable(unitstat.uiIcon)
 			cunit.style.imageUp = icon
 			if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
-		}, icons, vars.unitsperrow);
+		}, icons, vars.unitsperrow, "Search Units");
 	}).width(300).get();
 	cunit.label(() => vars.iconRoom + "Choose Unit")
 
@@ -917,6 +924,7 @@ function createBlockStatDialog(){
 		bsfilter = text;
 		updatestats(bsfilter, blockStatsTable, blockstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	bsearch.setMessageText("Search Block Stats")
 	blockStatsTable.row();
 	updatestats("", blockStatsTable, blockstat);
 	bstatdialog.addCloseButton();
@@ -936,7 +944,7 @@ function createBlockStatDialog(){
 			blockstat = b;
 			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(blockstat.uiIcon));
 			if (blockStatsTable != null){updatestats(bsfilter, blockStatsTable, blockstat)};
-		}, bicons, vars.blocksperrow);
+		}, bicons, vars.blocksperrow, "Search Blocks");
 	}).width(300).get();
 };
 function createSettings(){
@@ -1015,6 +1023,7 @@ function createSettings(){
 
 		addLabel("- - -  Other  - - -")
 		addBoolSetting("Instant Kill", false, "Instantly Die.")
+		addIntSetting("Rebuild Time", 0, 0.1, 0, 120, "The amount of time between building blocks in Builder AI mode (in seconds)")
 		addTeamSetting("Default Team", Team.sharded)
 		
     }).growY().growX();
@@ -1033,6 +1042,7 @@ function UpdateSettings(){
 	vars.unitsperrow = parseFloat(Core.settings.getString("Units per row"));
 	vars.blocksperrow = parseFloat(Core.settings.getString("Blocks per row"));
 	vars.defaultTeam = Team[Core.settings.getString("Default Team")]
+	vars.rebuildPeriod = parseFloat(Core.settings.getString("Rebuild Time"));
 
 	vars.instantkill = Core.settings.getBool("Instant Kill");
 	team = vars.defaultTeam;
@@ -1055,7 +1065,8 @@ Events.run(Trigger.update, () => {
 			};
 		}else{
 			if (buildMode == "m"){
-				playerAI = new BuilderAI()
+				playerAI = new BuilderAI();
+				playerAI.rebuildPeriod = vars.rebuildPeriod;
 				buildMode = "b"
 			};
 		};

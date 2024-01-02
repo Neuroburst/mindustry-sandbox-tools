@@ -29,6 +29,8 @@ var longPress = 30;
 var startFolded = false
 var instantkill = false
 
+var rebuildPeriod = 0;
+
 module.exports = {
     defaultUnit : defaultUnit,
     defaultBlock : defaultBlock,
@@ -48,4 +50,5 @@ module.exports = {
     defaultTeam : defaultTeam,
     instantkill : instantkill,
     longPress : longPress,
+    rebuildPeriod : rebuildPeriod,
 }
