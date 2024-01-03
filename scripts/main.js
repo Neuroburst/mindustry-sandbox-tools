@@ -167,7 +167,7 @@ function clearbanned() {
 function changeAI(value) {
 	let selectedai = value;
 	if (selectedai == "MineBuilderAI"){
-		aiButton.style.imageUp = Icon.hammer
+		aiButton.style.imageUp = Icon.production
 		aiButton.style.imageUpColor = Color.orange
 		playerAI = new BuilderAI();
 		playerAI.rebuildPeriod = vars.rebuildPeriod;
