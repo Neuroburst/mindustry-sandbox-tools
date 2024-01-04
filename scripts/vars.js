@@ -18,6 +18,8 @@ var gridPad = 5;
 var gridButtonSize = 76;
 var BarPad = 2;
 
+var optionButtonWidth = 220
+
 var iconRoom = "   ";
 
 var defaultUnit = UnitTypes.dagger
@@ -42,6 +44,7 @@ module.exports = {
     searchWidth : searchWidth,
     iconSize : iconSize,
     BarDist : BarDist,
+    optionButtonWidth : optionButtonWidth,
     BarPad : BarPad,
     gridPad : gridPad,
     gridButtonSize : gridButtonSize,

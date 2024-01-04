@@ -119,15 +119,13 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 					t.row();
 				}
-			}).size(400, 800);
+			}).width(400).top().left();
 		}
 	});
 	selectdialog.addCloseButton();
 
 	selectgriddialog = extend(BaseDialog, "<title>", {
 		refresh(tooltips, values, selector, icons, numperrow){
-			print(tooltips)
-			print(values)
 			if (this.cont.getCells().size >= 2){
 				this.cont.getCells().get(1).clearElement();
 				this.cont.getCells().remove(1);
@@ -148,10 +146,12 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 						t.row();
 					}
 					const icon = new TextureRegionDrawable(icons[i])
-					t.button(icon, () => {
+					let b = t.button(icon, () => {
 						selector(values[key]);
 						this.hide();
-					}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(tooltips[i]);
+					}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(tooltips[i]);
+					let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(tooltips[i]).style(Styles.outlineLabel)})
+					b.get().addListener(tooltip)
 				};
 			}).growX().top().left();
 		},

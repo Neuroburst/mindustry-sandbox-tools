@@ -1,16 +1,21 @@
-// TODO: indicator for block and unit placement location
 // TODO: Remote functions COMPLETELY BROKEN
-
-// TODO: Allow for more than just editing of bools and numbers? (check UnitTypes)
-// TODO: change between sandbox, survival, and attack
+// TODO: indicator for block and unit placement location
 
 
-// TODO: Custom unit "abilities" (check js guide schematic)
+// TODO: TUrbopatch bloom on more things
 
 
-// TODO: Add custom weapon adder
-// TODO: fix general sync issues in stat menus and tooltips (I think it's fixed [except for tooltips])
-// TODO: Stat menus are messed up (check marks are not in sync)? (I think it's fixed)
+// Stats to add:
+// Change between planets and weather (like testing ulities java)
+// change between sandbox, survival, and attack
+// Block.requirements
+// Block.buildVisibility
+// Unit.aiController
+// Unit.controller
+// Unit.abilities // TODO: Custom unit "abilities" (check js guide schematic)
+// Unit.immunities
+
+// change stats of items
 
 
 // remember to use this to find properties/functions
@@ -100,19 +105,14 @@ var bulletStatsTable
 
 // color rects for team indication
 var bbteamRect
-
 var steamRect
 var bteamRect
 
 
 // tables that need to be regenerated for searching
-var r;
-var t;
-var tmode;
 var poss;
 var posb;
 var rotb;
-var editWeaponsButton;
 
 // filtering for search
 var ufilter = "";
@@ -142,6 +142,14 @@ function click(handler, world){
 
 
 // functions
+function removeWeapon(){
+	(Vars.net.client() ? remoteF.removeWeapon : localF.removeWeapon)(unitstat, weaponstat);
+}
+
+function addWeapon(weapons){
+	(Vars.net.client() ? remoteF.addWeapon : localF.addWeapon)(unitstat, weapons);
+}
+
 function spawn() {
 	(Vars.net.client() ? remoteF.spawnRemote : localF.spawnLocal)(spos, count, rand, spawning, team, fuser, fuseMode);
 };
@@ -204,11 +212,10 @@ function updatespawnlist(filter, utable){
 		utable.getCells().remove(2);
 	}
 
-	if (r){
-		let to_remove = [r, t, tmode, poss]
-		for (let remove in to_remove){
+	if (poss){
+		let to_remove = 3
+		for (let i = 0; i < to_remove; i++){
 			let idx = utable.getCells().size - 1
-			//remove.remove()
 			utable.getCells().get(idx).clearElement();
 			utable.getCells().remove(idx);
 		}
@@ -234,7 +241,7 @@ function updatespawnlist(filter, utable){
 				}
 
 				const icon = new TextureRegionDrawable(unit.uiIcon);
-				slist.button(icon, () => {
+				let b = slist.button(icon, () => {
 					if (fuseMode) {
 						fuser = unit;
 						spawningLabelText = spawning.localizedName + " fused with " + fuser.localizedName;
@@ -246,14 +253,16 @@ function updatespawnlist(filter, utable){
 						spawnerButton.style.imageUp = icon;
 					}
 					spawnMenuButton.style.imageUp = icon;
-				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(unit.localizedName);
+				}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(unit.localizedName);
+				let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(unit.localizedName).style(Styles.outlineLabel)})
+				b.get().addListener(tooltip)
 			};
 		});
 	}).growX().top().left());
 	utable.row();
 
 	/* Random selection */
-	r = utable.table().center().bottom().get();
+	let r = utable.table().center().bottom().get();
 	r.defaults().left();
 	var rSlider = r.slider(0, maxRand, 0.125, rand, n => {
 		rand = n;
@@ -268,7 +277,7 @@ function updatespawnlist(filter, utable){
 	utable.row();
 	
 	/* Count selection */
-	t = utable.table().center().bottom().get();
+	let t = utable.table().center().bottom().get();
 	t.defaults().left();
 	var cSlider = t.slider(1, maxCount, count, n => {
 		count = n;
@@ -284,7 +293,10 @@ function updatespawnlist(filter, utable){
 
 	utable.row();
 
-	tmode = utable.button("Toggle Mode", Icon.refresh, () => {
+	const u = utable.table().center().bottom().get();
+	u.defaults().left();
+
+	u.button("Toggle Mode", Icon.refresh, () => {
 		fuseMode = !fuseMode;
 		if (fuseMode) {
 			spawnerButton.style.imageUp = Icon.refresh;
@@ -295,19 +307,18 @@ function updatespawnlist(filter, utable){
 	 		spawningLabelText = spawning.localizedName;
 			// spawnerButton.getCells().get(1).get().text = vars.iconRoom + "Spawn";
 		};
-	}).width(300).get();
-	utable.row();
-
-	poss = utable.button("Set Position", Icon.effect, () => {
+	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
+	poss = u.button("Set Position", Icon.effect, () => {
 		spawndialog.hide();
 	 	click((screen, world) => {
 	 		// We don't need sub-wu precision + make /js output nicer
 	 		spos.set(Math.round(world.x), Math.round(world.y));
-	 		poss.getLabel().text = "Set Position (" + Math.round(spos.x / 8)
+			Fx.tapBlock.at(spos.x, spos.y);
+	 		poss.getLabel().text = "Set Position\n(" + Math.round(spos.x / 8)
 	 			+ ", " + Math.round(spos.y / 8) + ")";
 	 			spawndialog.show();
 		}, true);
-	}).width(300).get();
+	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 }
 
 function updateblocklist(filter, blockTable){
@@ -317,10 +328,9 @@ function updateblocklist(filter, blockTable){
 	}
 
 	if (posb){
-		let to_remove = [posb, rotb]
-		for (let remove in to_remove){
+		let to_remove = 1
+		for (let i = 0; i < to_remove; i++){
 			let idx = blockTable.getCells().size - 1
-			//remove.remove()
 			blockTable.getCells().get(idx).clearElement();
 			blockTable.getCells().remove(idx);
 		}
@@ -346,36 +356,40 @@ function updateblocklist(filter, blockTable){
 				}
 
 				const icon = new TextureRegionDrawable(blo.uiIcon);
-				blist.button(icon, () => {
+				let b = blist.button(icon, () => {
 					block = blo;
 					blockButton.style.imageUp = icon;
 					placeButton.getCells().first().get().setDrawable(icon);
 				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(blo.localizedName);
+				let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(blo.localizedName).style(Styles.outlineLabel)})
+				b.get().addListener(tooltip)
 			}
 		});
 	}).growX().top().center();
 	blockTable.row();
 	
+	const o = blockTable.table().center().bottom().get();
+	o.defaults().left();
+
 	let rotations = [Icon.right, Icon.up, Icon.left, Icon.down]
-	rotb = blockTable.button("Rotation", rotations[brot], () => {
+	rotb = o.button("Rotation", rotations[brot], () => {
 		brot++;
 		if (brot > rotations.length - 1){
 			brot = 0
 		};
 		rotb.getCells().first().get().setDrawable(rotations[brot]);
-	}).width(300).get();
-	blockTable.row()
-
-	posb = blockTable.button("Set Position", Icon.effect, () => {
+	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
+	posb = o.button("Set Position", Icon.effect, () => {
 		blockdialog.hide();
 	 	click((screen, world) => {
 	 		// We don't need sub-wu precision + make /js output nicer
 	 		bpos.set(Math.round(world.x), Math.round(world.y));
-	 		posb.getLabel().text = "Set Position (" + Math.round(bpos.x / 8)
+			Fx.tapBlock.at(bpos.x, bpos.y);
+	 		posb.getLabel().text = "Set Position\n(" + Math.round(bpos.x / 8)
 	 			+ ", " + Math.round(bpos.y / 8) + ")";
 	 			blockdialog.show();
 	 	}, true);
-	}).width(300).get();
+	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 };
 
 function traverseStats(filter, slist, set, mode, i){
@@ -406,10 +420,10 @@ function traverseStats(filter, slist, set, mode, i){
 			let statbutton = slist.button(setstat, Icon.cancel, () => {
 				let enabled
 				if (mode == 0){
-					(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+					(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 					enabled = Vars.state.rules[setstat];
 				}else{
-					(Vars.net.client() ? setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+					(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
 					enabled = set[setstat];
 				};
 
@@ -442,6 +456,7 @@ function traverseStats(filter, slist, set, mode, i){
 				slist.row();
 			};
 			
+			let tool
 			let intbutton = slist.button(setstat, () => {
 				intbutton.name("number")
 				valuedialog = null;
@@ -456,16 +471,23 @@ function traverseStats(filter, slist, set, mode, i){
 
 				if (mode == 0){
 					vField = vd.field(Vars.state.rules[setstat], text => {
-						(Vars.net.client() ? setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
+						tool.clear();
+						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
+						tool.add(text);
 					}).get();
 				}else{
 					vField = vd.field(set[setstat], text => {
-						(Vars.net.client() ? setStatRemote : localF.setStatLocal)(set, setstat, parseFloat(text));
+						tool.clear();
+						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, parseFloat(text));
+						tool.add(text);
 					}).get();
 
 				};
+
 				vField.validator = text => !isNaN(parseFloat(text));
-			}).pad(vars.gridPad).width(300).tooltip(String(set[setstat])); // TODO : tooltips go out of sync until refreshed
+			}).pad(vars.gridPad).width(300);
+			let tooltip = new Tooltip(t => {tool = t; t.background(Tex.button).margin(10).add(String(set[setstat])).style(Styles.outlineLabel)})
+			intbutton.get().addListener(tooltip)
 		};
 	};
 	return i;
@@ -489,10 +511,13 @@ function updatestats(filter, table, set) {
 	}
 
 	var amount = 2
+	var minsize = 3
 
-	if (mode == 1){amount += 2};
+	if (mode == 1){amount += 1};
+	if (mode == 3){amount += 1};
+	if (mode == 4){minsize -= 1; amount -= 1};
 
-	if (table.getCells().size >= 3){
+	if (table.getCells().size >= minsize){
 		for (let i = 0; i < amount; i++){
 		table.getCells().get(1).clearElement();
 		table.getCells().remove(1);
@@ -509,7 +534,7 @@ function updatestats(filter, table, set) {
 	}else if (mode == 3){
 		table.label(() => weaponstat.name);
 	}else if (mode == 4){
-		table.label(() => bulletstat.name);
+		//table.label(() => bulletstat);
 	};
 	table.row();
 	
@@ -518,39 +543,86 @@ function updatestats(filter, table, set) {
 	}).growX().top().center();
 	table.row();
 	if (mode == 1){
-		editWeaponsButton = table.button("Edit Weapons", Icon.pencil, () => {
+		const a = table.table().center().bottom().get();
+		a.defaults().left();
+		a.button("Edit Weapons", Icon.pencil, () => {
 			updateweaponslist(weaponTable);
 			weapondialog.show();
-		}).width(220);
-		table.row();
-		table.button("Edit Abilities", Icon.effect, () => {
-		}).width(220);
+		}).width(vars.optionButtonWidth).pad(vars.gridPad);
+
+		a.button("Edit Abilities", Icon.effect, () => {
+		}).width(vars.optionButtonWidth).pad(vars.gridPad);
 	}
+	if (mode == 3){
+		table.button("Edit Bullet", Icon.pencil, () => {
+			updatestats(bufilter, bulletStatsTable, bulletstat);
+			bulletstatdialog.show()
+		}).width(vars.optionButtonWidth);
+	};
 };
 
 function updateweaponslist(wtable){
 	let weapons = unitstat.weapons
 	wtable.clear();
 	wtable.pane(wlist => {
+		let i = 0
 		weapons.each(weapon => {
-			//for (let weaponstat in weapon) {print(weaponstat)}
-			
+			if (i++ % vars.unitsperrow == 0) {
+				wlist.row();
+			}
 			const icon = new TextureRegionDrawable(weapon.region);
-			// if (weapon.flip){	
+			// if (weapon.flipSprite){	
 			// 	icon.region.flip(true, false)
 			// 	//icon.region.width = -icon.region.width
 			// }
-			wlist.button(icon, () => {
+			let b = wlist.button(icon, () => {
 				weaponstat = weapon
 				bulletstat = weaponstat.bullet
 				updatestats(wsfilter, weaponStatsTable, weaponstat);
 				weaponstatdialog.show();
-			}).pad(vars.gridPad).size(76).tooltip(weapon.name);
+			}).pad(vars.gridPad).size(76);//.tooltip(weapon.name);
+			let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(weapon.name).style(Styles.outlineLabel)})
+			b.get().addListener(tooltip)
+
 		});
 		
-		wlist.button(Icon.add, () => {
-				
-		}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip("Add a new weapon");
+		let b = wlist.button(Icon.add, () => {
+			var weapons = []
+			var weaponNames = []
+			var weaponIcons = []
+
+			const units = Vars.content.units();
+			units.sort();
+			units.each(unit => {
+				let oldweapon = null
+				unit.weapons.each(w => {
+					let weapon = w.copy()
+					if (oldweapon && oldweapon.name == weapon.name && weapon.mirror && oldweapon.mirror){
+						weapons.push([oldweapon, weapon])
+
+						weaponNames.push(weapon.name + " (" + unit.localizedName + ")")
+						weaponIcons.push(weapon.region)
+						oldweapon = null
+					}else{
+						oldweapon = weapon
+					}
+
+					if (!weapon.mirror){
+						weapons.push([weapon])
+
+						weaponNames.push(weapon.name + " (" + unit.localizedName + ")")
+						weaponIcons.push(weapon.region)
+					}
+				});
+			});
+
+			ui.selectgrid("Add a new weapon", weaponNames, weapons, w => {
+				addWeapon(w);
+				updateweaponslist(weaponTable);
+			}, weaponIcons, vars.unitsperrow, "Search Weapons")
+		}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip("Add a new weapon");
+		let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add("Add a new weapon").style(Styles.outlineLabel)})
+		b.get().addListener(tooltip)
 	});
 };
 
@@ -625,7 +697,7 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 			};
 
 			ui.select("Team", Team.all, t => {
-				(Vars.net.client() ? changeteamRemote : localF.changeteamLocal)(t);
+				(Vars.net.client() ? remoteF.changeteamRemote : localF.changeteamLocal)(t);
 				bbteamRect.tint.set(t.color);
 			}, (i, t) => "[#" + t.color + "]" + t, null);
 		});
@@ -647,7 +719,7 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 				return;
 			};
 			Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
-			(Vars.net.client() ? healRemote : localF.healLocal)(true);
+			(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(true);
 		});
 		ui.createButton(playertable, playertableinside, "Heal to full health", Icon.add, "Heal to full health", Styles.defaulti, false,  () => {
 		if (Vars.state.rules.sector) {
@@ -655,7 +727,7 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 			return;
 		};
 			Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
-			(Vars.net.client() ? healRemote : localF.healLocal)(false);
+			(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(false);
 		});
 
 		let h3 = 0;
@@ -695,23 +767,26 @@ function createStatusDialog(){
 		const effects = Vars.content.statusEffects();
 		var i = 0;
 		effects.each(eff => {
-			
-			if (eff.name == "none") return;
+			if (eff.name == "none" || eff.localizedName == "invincible"){
+				return};
 
 			if (i++ % 5 == 0) {
 				elist.row();
 			}
 
-			const icon = new TextureRegionDrawable(eff.uiIcon);
-			elist.button(icon, () => {
+			var icon = new TextureRegionDrawable(eff.uiIcon);
+
+			let b = elist.button(icon, () => {
 				effect = eff;
 				statusButton.style.imageUp = icon;
-			}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(eff.localizedName);
+			}).pad(vars.gridPad).size(vars.gridButtonSize);
+			let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(eff.localizedName).style(Styles.outlineLabel)})
+			b.get().addListener(tooltip)
 		});
 	}).growX().top().center();
 	statusTable.row();
 
-	const d = statusTable.table().center().bottom().get();
+	const d = statusTable.table().center().bottom().pad(vars.gridPad).get();
 	var dSlider, dField;
 	d.defaults().left();
 	dSlider = d.slider(0, maxDuration, 0.125, duration, n => {
@@ -727,9 +802,13 @@ function createStatusDialog(){
 	statusTable.row();
 
 	statusdialog.addCloseButton();
-	statusdialog.buttons.button("Apply Effect", Icon.add, apply);
-	statusdialog.buttons.button("Apply Permanently", Icon.save, applyperma);
-	statusdialog.buttons.button("Clear Effects", Icon.cancel, clear)
+	statusdialog.buttons.button("Clear Effects", Icon.cancel, clear);//.width(vars.optionButtonWidth).pad(vars.gridPad);
+
+	const o = statusTable.table().center().bottom().pad(vars.gridPad).get();
+	o.defaults().left();
+	o.button("Apply Effect", Icon.add, apply).width(vars.optionButtonWidth).pad(vars.gridPad);
+	o.button("Apply Permanently", Icon.save, applyperma).width(300).pad(vars.gridPad);
+	
 };
 
 function createSpawnDialog(){
@@ -790,13 +869,15 @@ function createWeaponStatDialog(){
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	wssearch.setMessageText("Search Weapon Stats")
 	weaponStatsTable.row();
-	updatestats("", weaponStatsTable, weaponstat);
+	updatestats("", weaponStatsTable, weaponstat);	
 	weaponstatdialog.addCloseButton();
-	weaponstatdialog.buttons.button("Edit Bullet", Icon.pencil, () => {
-		updatestats(bufilter, bulletStatsTable, bulletstat);
-		bulletstatdialog.show()
-	}).width(220);
+	weaponstatdialog.buttons.button("Remove Weapon", Icon.cancel, () => {
+		removeWeapon();
+		updateweaponslist(weaponTable);
+		weaponstatdialog.hide()
+	}).width(vars.optionButtonWidth);
 };
+
 function createBulletStatDialog(){
 	bulletstatdialog = new BaseDialog("Bullet Stat Menu");
 	bulletStatsTable = bulletstatdialog.cont;
@@ -1107,7 +1188,6 @@ Events.run(Trigger.update, () => {
 
 Events.on(EventType.WorldLoadEvent, e => {
 	UpdateSettings()
-	// Update tables
 	if (rulesTable != null){updatestats(rfilter, rulesTable, Vars.state.rules)};
 	bbteamRect.tint.set(Vars.player.team().color);
 });

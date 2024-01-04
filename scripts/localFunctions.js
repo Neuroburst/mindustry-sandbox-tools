@@ -1,4 +1,21 @@
 /* Local Functions */
+function removeWeapon(unit, weapon){
+	unit.weapons.remove(weapon)
+}
+
+function addWeapon(unit, weapons){
+	for (let i in weapons){
+		unit.weapons.add(weapons[i])
+		if (i == 1){
+			// if the other weapon is already added
+			weapons[i].otherSide = unit.weapons.size -1 - 1
+		}else{
+			// if the other weapon is going to be added
+			weapons[i].otherSide = unit.weapons.size -1 + 1
+		}
+	}	
+}
+
 function spawnLocal(spos, count, rand, spawning, team, fuser, fuseMode) {
 	for (var n = 0; n < count; n++) {
 		Tmp.v1.rnd(Mathf.random(rand * Vars.tilesize));
@@ -100,4 +117,6 @@ module.exports = {
     setRuleLocal : setRuleLocal,
     setStatLocal : setStatLocal,
     clearbannedLocal : clearbannedLocal,
+	removeWeapon : removeWeapon,
+	addWeapon : addWeapon,
 }
