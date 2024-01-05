@@ -1,9 +1,14 @@
 // TODO: Remote functions COMPLETELY BROKEN
+
 // TODO: indicator for block and unit placement location
 
+// show range of enemy turrets and units
+// fill/empty core
 
-// TODO: TUrbopatch bloom on more things
+// auto-ammo for turrets
 
+// custom scripts and Icon menu
+// upgrade walls or any block
 
 // Stats to add:
 // Change between planets and weather (like testing ulities java)
@@ -14,8 +19,9 @@
 // Unit.controller
 // Unit.abilities // TODO: Custom unit "abilities" (check js guide schematic)
 // Unit.immunities
-
-// change stats of items
+// change stats of >items<
+// set wave
+// change team rules
 
 
 // remember to use this to find properties/functions
@@ -63,8 +69,13 @@ var blockstat = vars.defaultBlock
 var weaponstat = vars.defaultUnit.weapons.get(0)
 var bulletstat = weaponstat.bullet
 
+/* Upgrades */
+const upgrades = ["Conveyors", "Conduits", "Drills", "Walls"]
+
+
 /* AI */
 var playerAI = null;
+// TODO: (hardcoded)
 const ais = ["None", "MineBuilderAI", "BuilderAI", "RepairAI", "AssemblerAI", "BoostAI", "CargoAI", "CommandAI", "DefenderAI", "FlyingAI", "FlyingFollowAI", "GroundAI", "HugAI", "LogicAI", "MinerAI", "MissileAI", "SuicideAI"]
 var buildMode = "b"
 var selectedai = "None";
@@ -172,6 +183,23 @@ function clear() {
 function clearbanned() {
 	(Vars.net.client() ? remoteF.clearbannedRemote : localF.clearbannedLocal)();
 };
+
+function Upgrade(type){
+	var builds = Vars.player.team().data().buildings
+	if (type == "Walls"){
+
+	};
+
+	builds.forEach(build => {
+		if (type == "Conveyors" && build.block == Blocks.conveyor){
+			Vars.player.unit().addBuild(new BuildPlan(build.x / Vars.tilesize, build.y / Vars.tilesize, build.rotation, Blocks.titaniumConveyor, null), false)
+		} else if (type == "Conduits" && build.block == Blocks.conduit){
+			Vars.player.unit().addBuild(new BuildPlan(build.x / Vars.tilesize, build.y / Vars.tilesize, build.rotation, Blocks.pulseConduit, null), false)
+		} else if (type == "Drills" && build.block == Blocks.mechanicalDrill){
+			Vars.player.unit().addBuild(new BuildPlan(build.x / Vars.tilesize, build.y / Vars.tilesize, build.rotation, Blocks.pneumaticDrill, null), false)
+		}
+	})
+}
 function changeAI(value) {
 	let selectedai = value;
 	if (selectedai == "MineBuilderAI"){
@@ -672,7 +700,7 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 			blockdialog.show();
 		});
 	}
-	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.up : Icon.down), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
+	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.upload : Icon.download), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
 		folded = !folded
 		
 		if (folded){
@@ -705,6 +733,11 @@ function createFolderButtons(spawntableinside, playertableinside, cheats, spawns
 	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
 		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
+
+	ui.createButton(playertable, playertableinside, "Upgrade", Icon.up, "Upgrades", Styles.defaulti, false, () => {
+		ui.select("Choose upgrade type", upgrades, value => {Upgrade(value)}, upgrades, null);
+	});
+
 	if (cheats){
 		statusButton = ui.createButton(playertable, playertableinside, "Apply status effects", Icon.effect, "Apply status effects", Styles.defaulti, false,  () => {
 			if (Vars.state.rules.sector) {
