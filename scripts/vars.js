@@ -33,6 +33,9 @@ var instantkill = false
 
 var rebuildPeriod = 0;
 
+var rangeFillTransparency = 0.02
+var rangeBorderTransparency = 0.5
+
 module.exports = {
     defaultUnit : defaultUnit,
     defaultBlock : defaultBlock,
@@ -54,4 +57,6 @@ module.exports = {
     instantkill : instantkill,
     longPress : longPress,
     rebuildPeriod : rebuildPeriod,
+    rangeFillTransparency : rangeFillTransparency,
+    rangeBorderTransparency : rangeBorderTransparency,
 }

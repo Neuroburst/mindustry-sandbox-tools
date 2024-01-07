@@ -5,8 +5,11 @@ var selectgriddialog = null;
 var selectgridfilter = "";
 
 /* UI Creation and Utilities (Essentially re-writing certain parts of ui-lib) */
-function createButton(parent, superparent, name, icon, tooltip, style, return_cell, clicked){
-	var cell = parent.button(icon, style, vars.iconSize, ()=>{});
+function createButton(parent, superparent, name, icon, tooltip, style, return_cell, clicked, mini){
+	if (!mini){
+		mini = 0
+	}
+	var cell = parent.button(icon, style, vars.iconSize - mini, ()=>{});
 	cell.name(name);
 	if (tooltip != "") {
 		cell.tooltip(tooltip)
@@ -23,7 +26,7 @@ function createButton(parent, superparent, name, icon, tooltip, style, return_ce
 			}
 		});
 	};
-	if (superparent){superparent.add(button).pad(vars.BarPad).left().size(vars.buttonWidth, vars.buttonHeight)};
+	if (superparent){superparent.add(button).pad(vars.BarPad).left().size(vars.buttonWidth - mini, vars.buttonHeight - mini)};
 	if (return_cell){
 		return cell;
 	}else{

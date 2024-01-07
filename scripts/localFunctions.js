@@ -33,9 +33,14 @@ function spawnLocal(spos, count, rand, spawning, team, fuser, fuseMode) {
 	}
 };
 
-function spawnblockLocal(bpos, block, team, brot) {
-	Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, brot);
-    Fx.placeBlock.at(bpos.x, bpos.y, block.size);
+function spawnblockLocal(bpos, block, team, brot, del) {
+	if (!block){
+		Vars.world.tileWorld(bpos.x, bpos.y).setAir();
+	}else{
+		Vars.world.tileWorld(bpos.x, bpos.y).setNet(block, team, brot);
+		Fx.placeBlock.at(bpos.x, bpos.y, block.size);
+	}
+    
 };
 
 function changeteamLocal(setteam) {
