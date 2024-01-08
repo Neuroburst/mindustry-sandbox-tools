@@ -1251,7 +1251,8 @@ function createStatusDialog(){
 	const o = statusTable.table().center().bottom().pad(vars.gridPad).get();
 	o.defaults().left();
 	o.button("Apply Effect", Icon.add, apply).width(vars.optionButtonWidth).pad(vars.gridPad);
-	o.button("Apply Permanently", Icon.save, applyperma).width(300).pad(vars.gridPad);
+	let permButton = o.button("Apply Permanently", Icon.save, applyperma).width(300).pad(vars.gridPad);
+	permButton.disabled(() => effect.permanent)
 	
 };
 
