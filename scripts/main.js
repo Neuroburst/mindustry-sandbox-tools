@@ -1,6 +1,9 @@
 // TODO: Remote functions COMPLETELY BROKEN
-// auto-ammo ai for turrets on servers
+// custom scripts and Icon menu?
 // Change between planets and weather (like testing ulities java)
+
+
+// auto-ammo ai for turrets on servers // depositing resources in ANY AI on a server is also broked
 
 
 // Stats to add:
@@ -14,12 +17,15 @@
 // set wave
 // change team rules
 
+// global power net
+// total unit count for evey team
 
-// TODO: copy from testing utils java and pvp-notifs
 
-// fill/empty core
-// change between sandbox, survival, and attack
-// add useful shortcuts like these (customizable?) --> custom scripts and Icon menu --> reorganize HUD
+// make enabled warnings save their enabled status
+// make blocks to warn customizable
+// add erikir blocks to lists
+// add more options
+// alerts/notifs
 
 
 // remember to use this to find properties/functions
@@ -82,6 +88,8 @@ var bulletstat = weaponstat.bullet
 /* Upgrades */
 const upgrades = ["Custom", "Conveyors", "Conduits", "Drills", "Copper Walls", "Titanium Walls", "Thorium Walls", "Beryllium Walls", "Tungsten Walls", "Reinforced Surge Walls"]
 
+/* fill */
+var fillMode = true
 
 /* AI */
 var playerAI = null;
@@ -97,7 +105,25 @@ var targetAmmoAmount
 
 var selectedai = "None";
 
+
 var folded = false
+
+/* Warnings */
+var teamData = {} // Data for each team and their accomplishments
+var allWarnings = false
+var unitWarn = false // when the enemy produces units
+var blockWarn = false // when the enemy builds a certain block for the first time
+var blocksToWarn = [Blocks.spectre, Blocks.foreshadow, Blocks.cyclone, Blocks.swarmer, Blocks.meltdown,
+	Blocks.additiveReconstructor, Blocks.multiplicativeReconstructor, Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor] // TODO: add Erekir blocks too/customization
+
+var resourcesToWarn = [Blocks.graphitePress, Blocks.siliconSmelter, Blocks.kiln, Blocks.plastaniumCompressor, Blocks.phaseWeaver, Blocks.surgeSmelter, Blocks.pyratiteMixer, Blocks.blastMixer] // TODO: add Erekir blocks too
+
+
+var resourcesWarn = false // when the enemy first produces a resource
+var baseWarn = false // when the base is under attack, and at what position or new units are sent to attack
+var powerWarn = false // show alerts for power failure or lacking production
+
+
 /* UI Elements */
 var spawndialog = null
 var statusdialog = null
@@ -110,6 +136,7 @@ var weapondialog = null
 var weaponstatdialog = null
 var bulletstatdialog = null
 var rangedialog = null
+var filldialog = null
 
 var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
@@ -198,6 +225,11 @@ function apply(perma) {
 function applyperma() {
 	apply(true);
 };
+
+function fillEmptyCore() {
+	(Vars.net.client() ? remoteF.fillEmptyCoreRemote : localF.fillEmptyCoreLocal)(Vars.player.unit().core(), fillMode);
+}
+
 function kill() {
 	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)(vars.instantkill);
 };
@@ -318,6 +350,63 @@ function changeAI(value) {
 function currentunit(){
 	unitstat = Vars.player.unit().type
 	if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
+}
+
+function drawPosUnit() {
+	let x = 0
+	let y = 0
+    if (expectingPos == "Spawn" && !Core.scene.hasMouse()) {
+      x = Core.input.mouseWorldX();
+      y = Core.input.mouseWorldY();
+      if (Vars.net.client()) {
+        x = Mathf.floor(x);
+        y = Mathf.floor(y);
+      } 
+    } else if (shover) {
+      x = spos.x;
+      y = spos.y;
+    } else {
+      return;
+    } 
+    Draw.z(120.0);
+    Lines.stroke(1.0, team.color);
+    if (rand > 0)
+      Lines.circle(x, y, rand * 8.0); 
+    Draw.rect(Icon.effect.getRegion(), x, y, 8.0, 8.0);
+  }
+
+function drawPosBlock() {
+    let x = 0
+	let y = 0
+    let size = (block.size * 8);
+    let offset = ((1 - block.size % 2) * 8) / 2.0;
+	if (expectingPos == "Block" && !Core.scene.hasMouse()) {
+      x = (World.toTile(Core.input.mouseWorldX()) * Vars.tilesize);
+      y = (World.toTile(Core.input.mouseWorldY()) * Vars.tilesize);
+    } else if (bhover) {
+	x = Math.round(bpos.x / Vars.tilesize) * Vars.tilesize
+	y = Math.round(bpos.y / Vars.tilesize) * Vars.tilesize
+    } else {
+      return;
+    } 
+    Draw.z(120.0);
+
+    Lines.stroke(1.0, team.color);
+    Lines.rect(x - size / 2.0 + offset, y - size / 2.0 + offset, size, size);
+	// TODO: global variable bugs, so copypasta is needed
+	var rotations = [Icon.right, Icon.up, Icon.left, Icon.down]
+    Draw.rect(rotations[brot].getRegion(), x, y, 8.0, 8.0);
+  }
+
+function hasAmmo(build){
+	
+	if(build.block instanceof PowerTurret || build.block instanceof PointDefenseTurret || build.block instanceof TractorBeamTurret){
+		return build.power.status>0;
+	}
+	if(build.block instanceof Turret){
+		return build.hasAmmo();
+	}
+	return false;
 }
 
 
@@ -541,39 +630,61 @@ function traverseStats(filter, slist, set, mode, i){
 				slist.row();
 			};
 			
-			
-			let statbutton = slist.button(setstat, Icon.cancel, () => {
-				let enabled
-				if (mode == 0){
-					(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
-					enabled = Vars.state.rules[setstat];
-				}else{
-					(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
-					enabled = set[setstat];
-				};
+			let statbutton
+			let buttonName = setstat
+			if (setstat == "infiniteResources"){ // TODO: hardcode in the name of science
+				buttonName = "Sandbox Mode"
+				statbutton = gamedialog.buttons.button(buttonName, Icon.cancel, () => {
+					let enabled
+					if (mode == 0){
+						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						enabled = Vars.state.rules[setstat];
+					}else{
+						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+						enabled = set[setstat];
+					};
 
-				if (enabled){
-					let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
-					statbutton.get().getCells().first().get().setDrawable(icon);
-					statbutton.get().getLabel().text = "[acid]" + setstat
-				}else{
-					let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
-					statbutton.get().getCells().first().get().setDrawable(icon);
-					statbutton.get().getLabel().text = "[scarlet]" + setstat
-				};
-	
-			}).pad(vars.gridPad).width(300);
-			
+					if (enabled){
+						let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
+						statbutton.get().getCells().first().get().setDrawable(icon);
+						statbutton.get().getLabel().text = "[acid]" + buttonName
+					}else{
+						let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
+						statbutton.get().getCells().first().get().setDrawable(icon);
+						statbutton.get().getLabel().text = "[scarlet]" + buttonName
+					}}).width(300);
+			}else{
+				statbutton = slist.button(buttonName, Icon.cancel, () => {
+					let enabled
+					if (mode == 0){
+						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						enabled = Vars.state.rules[setstat];
+					}else{
+						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+						enabled = set[setstat];
+					};
+
+					if (enabled){
+						let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
+						statbutton.get().getCells().first().get().setDrawable(icon);
+						statbutton.get().getLabel().text = "[acid]" + buttonName
+					}else{
+						let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
+						statbutton.get().getCells().first().get().setDrawable(icon);
+						statbutton.get().getLabel().text = "[scarlet]" + buttonName
+					}}).pad(vars.gridPad).width(300);
+			};
+
 			statbutton.name("boolean")
 
 			if (set[setstat]){
 				let icon = new TextureRegionDrawable(Icon.ok).tint(Color.acid)
 				statbutton.get().getCells().first().get().setDrawable(icon);
-				statbutton.get().getLabel().text = "[acid]" + setstat
+				statbutton.get().getLabel().text = "[acid]" + buttonName
 			}else{
 				let icon = new TextureRegionDrawable(Icon.cancel).tint(Color.scarlet)
 				statbutton.get().getCells().first().get().setDrawable(icon);
-				statbutton.get().getLabel().text = "[scarlet]" + setstat
+				statbutton.get().getLabel().text = "[scarlet]" + buttonName
 			};
 		
 		}else if (Object.prototype.toString.call(set[setstat]) == "[object Number]"){
@@ -766,6 +877,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			}
 
 		});
+		tRange.style.up = Tex.buttonSideLeft
+		tRange.style.over = Tex.buttonSideLeftDown
+		tRange.style.down = Tex.buttonSideLeftOver
+
 		tRange.update(() => {
 			if(tRange.isPressed()){				
 				rangeHold += Core.graphics.getDeltaTime() * 60;
@@ -785,14 +900,110 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			}
 		});
 
-		ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
+		uRange.style.up = Tex.buttonSideRight
+		uRange.style.over = Tex.buttonSideRightDown
+		uRange.style.down = Tex.buttonSideRightOver
+
+		let warnButtons = []
+		let warnings
+		let setupWarnings = function func(){
+			allWarnings = !allWarnings
+			for (let i in warnButtons){
+				let button = warnButtons[i]
+				button.disabled = !allWarnings
+			}
+			if (allWarnings){
+				if (Vars.ui.hudfrag){Vars.ui.hudfrag.showToast(Icon.ok, "Warnings Enabled (You must enable other warnings for this to do anything)")}
+				warnings.style.imageUpColor = Pal.accent
+			}else{
+				if (Vars.ui.hudfrag){Vars.ui.hudfrag.showToast(Icon.cancel, "Warnings Disabled")}
+				warnings.style.imageUpColor = Color.white
+			}}
+		warnings = ui.createButton(viewtable, viewtableinside, "Warnings", Icon.warning, "Show alerts for enemy development", Styles.defaulti, false, setupWarnings);
+		allWarnings = !allWarnings // flip it
+
+		warnings.style.up = Tex.buttonSideLeft
+		warnings.style.over = Tex.buttonSideLeftDown
+		warnings.style.down = Tex.buttonSideLeftOver
+
+		let uwarn = ui.createButton(viewtable, viewtableinside, "Unit Warnings", Icon.units, "Show alerts for enemy unit creation", Styles.defaulti, false, () => {
+			unitWarn = !unitWarn
+			if (unitWarn){
+				uwarn.style.imageUpColor = Pal.accent
+			}else{
+				uwarn.style.imageUpColor = Color.white
+			}
+		});
+		warnButtons.push(uwarn)
+		uwarn.style.up = Tex.pane
+		uwarn.style.over = Tex.buttonSelectTrans
+		uwarn.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
+
+		let bwarn = ui.createButton(viewtable, viewtableinside, "Block Warnings", Icon.crafting, "Show alerts for enemy blocks", Styles.defaulti, false, () => {
+			blockWarn = !blockWarn
+			if (blockWarn){
+				bwarn.style.imageUpColor = Pal.accent
+			}else{
+				bwarn.style.imageUpColor = Color.white
+			}
+		});
+		warnButtons.push(bwarn)
+		bwarn.style.up = Tex.pane
+		bwarn.style.over = Tex.buttonSelectTrans
+		bwarn.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
+
+		let rwarn = ui.createButton(viewtable, viewtableinside, "Resource Warnings", Icon.book, "Show alerts for enemy resource production", Styles.defaulti, false, () => {
+			resourcesWarn = !resourcesWarn
+			if (resourcesWarn){
+				rwarn.style.imageUpColor = Pal.accent
+			}else{
+				rwarn.style.imageUpColor = Color.white
+			}
+		});
+		warnButtons.push(rwarn)
+		rwarn.style.up = Tex.pane
+		rwarn.style.over = Tex.buttonSelectTrans
+		rwarn.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
+
+		let bawarn = ui.createButton(viewtable, viewtableinside, "Base Warnings", Icon.modeAttack, "Show alerts for when your base is under attack", Styles.defaulti, false, () => {
+			baseWarn = !baseWarn
+			if (baseWarn){
+				bawarn.style.imageUpColor = Pal.accent
+			}else{
+				bawarn.style.imageUpColor = Color.white
+			}
+		});
+		warnButtons.push(bawarn)
+		bawarn.style.up = Tex.pane
+		bawarn.style.over = Tex.buttonSelectTrans
+		bawarn.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
+
+		let powerwarn = ui.createButton(viewtable, viewtableinside, "Power Warnings", Icon.power, "Show alerts for power status", Styles.defaulti, false, () => {
+			powerWarn = !powerWarn
+			if (powerWarn){
+				powerwarn.style.imageUpColor = Pal.accent
+			}else{
+				powerwarn.style.imageUpColor = Color.white
+			}
+		});
+		warnButtons.push(powerwarn)
+		powerwarn.style.up = Tex.buttonSideRight
+		powerwarn.style.over = Tex.buttonSideRightDown
+		powerwarn.style.down = Tex.buttonSideRightOver
+		setupWarnings()
+		
+		let rulesButton = ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
 			if (Vars.state.rules.sector) {
 				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 				return;
 			};
 			gamedialog.show();
 		});
-		ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.defaulti, false, () => {
+		rulesButton.style.up = Tex.buttonSideLeft
+		rulesButton.style.over = Tex.buttonSideLeftDown
+		rulesButton.style.down = Tex.buttonSideLeftOver
+
+		let uStatButton = ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.cleari, false, () => {
 			if (Vars.state.rules.sector) {
 				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 				return;
@@ -800,14 +1011,23 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 			statdialog.show();
 		});
-		ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
+
+		uStatButton.style.up = Tex.pane
+		uStatButton.style.over = Tex.buttonSelectTrans
+		uStatButton.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
+
+		let bStatButton = ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
 			if (Vars.state.rules.sector) {
 				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 				return;
 			};
 
 			bstatdialog.show();
-		}, 0);
+		});
+		bStatButton.style.up = Tex.buttonSideRight
+		bStatButton.style.over = Tex.buttonSideRightDown
+		bStatButton.style.down = Tex.buttonSideRightOver
+
 		let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
 		spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, false,  () => {
 			if (Vars.state.rules.sector) {
@@ -816,7 +1036,11 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			};
 
 			spawndialog.show();
-		});
+		}, vars.fullIconSize);
+		spawnMenuButton.style.up = Tex.buttonSideLeft
+		spawnMenuButton.style.over = Tex.buttonSideLeftDown
+		spawnMenuButton.style.down = Tex.buttonSideLeftOver
+
 		spawnMenuButton.hovered(() => {shover = true});
 		spawnMenuButton.exited(() => {shover = false});
 
@@ -828,11 +1052,15 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			};
 
 			blockdialog.show();
-		});
+		}, vars.fullIconSize);
+		blockButton.style.up = Tex.buttonSideRight
+		blockButton.style.over = Tex.buttonSideRightDown
+		blockButton.style.down = Tex.buttonSideRightOver
+
 		blockButton.hovered(() => {bhover = true});
 		blockButton.exited(() => {bhover = false});
 	}
-	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.upload : Icon.download), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
+	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.upOpen : Icon.downOpen), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
 		folded = !folded
 		
 		if (folded){
@@ -847,21 +1075,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		}
 		
 	});
-	if (cheats){
-		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
-		bbteamRect.tint.set(Vars.player.team().color);
-		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
 
-			ui.select("Team", Team.all, t => {
-				(Vars.net.client() ? remoteF.changeteamRemote : localF.changeteamLocal)(t);
-				bbteamRect.tint.set(t.color);
-			}, (i, t) => "[#" + t.color + "]" + t, null);
-		});
-	}
 	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
 		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
 	});
@@ -872,7 +1086,43 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 	//upgradeButton.style.imageUpColor = Color.orange
 
 	if (cheats){
-		const miniTable = playertableinside.table().center().bottom().get();
+		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
+		bbteamRect.tint.set(Vars.player.team().color);
+		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.defaulti, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+
+			ui.select("Team", Team.all, t => {
+				(Vars.net.client() ? remoteF.changeteamRemote : localF.changeteamLocal)(t);
+				bbteamRect.tint.set(t.color);
+			}, (i, t) => "[#" + t.color + "]" + t, null);
+		}, vars.fullIconSize);
+
+		let fillHold = 0
+		let fillButton = ui.createButton(playertable, playertableinside, "Fill Core", Icon.commandRally, "Fill/Empty core (hold down for more options)", Styles.defaulti, false, () => {
+			if (fillHold > vars.longPress){return};
+			fillEmptyCore()
+		});
+
+		fillButton.update(() => {
+			if (fillMode){
+				fillButton.style.imageUp = Icon.commandRally
+			}else{
+				fillButton.style.imageUp = Icon.eraser
+			}
+
+			if(fillButton.isPressed()){				
+				fillHold += Core.graphics.getDeltaTime() * 60;
+				if(fillHold > vars.longPress){
+					fillHold = 0
+					filldialog.show()
+				}
+			}
+		})
+
+		const miniTable = playertableinside.table().center().bottom().pad(vars.BarPad).get();
 		miniTable.defaults().left();
 
 		statusButton = ui.createButton(miniTable,  miniTable.cont, "Apply status effects", new TextureRegionDrawable(Icon.effect), "Apply status effects", Styles.defaulti, false,  () => {
@@ -881,7 +1131,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 				return;
 			};
 			statusdialog.show();
-		}, 30);
+		}, null, vars.miniButtonCut);
 		//statusButton.style.imageUpColor = Color.gold
 
 		let invButton = ui.createButton(miniTable,  miniTable.cont, "Become invincible", new TextureRegionDrawable(Icon.modeSurvival), "Become invincible", Styles.defaulti, false,  () => {
@@ -891,7 +1141,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			};
 			Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
 			(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(true);
-		}, 30);
+		}, null, vars.miniButtonCut);
 		//invButton.style.imageUpColor = Color.royal
 		miniTable.row()
 		let healButton = ui.createButton(miniTable, miniTable.cont, "Heal to full health", new TextureRegionDrawable(Icon.add), "Heal to full health", Styles.defaulti, false,  () => {
@@ -901,7 +1151,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			};
 				Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
 				(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(false);
-		}, 30);
+		}, null, vars.miniButtonCut);
 		//healButton.style.imageUpColor = Color.acid
 		
 		let kHold = 0;
@@ -913,7 +1163,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 			if(kHold > vars.longPress){return}
 			Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
 			kill();
-		}, 30);
+		}, null, vars.miniButtonCut);
 		//killButton.style.imageUpColor = Color.scarlet
 		killButton.update(() => {
 			if(killButton.isPressed()){
@@ -1087,6 +1337,27 @@ function createRangeDialog(){
 	rangedialog.addCloseButton();
 }
 
+function createFillDialog(refresh){
+	if (!refresh){filldialog = new BaseDialog("Fill/Empty Core Menu");filldialog.addCloseButton();}
+	let filldialogTable = filldialog.cont;
+	if (refresh){
+		filldialogTable.clear()
+	}
+
+	let emptycheck
+	let fillcheck = filldialogTable.check(vars.iconRoom + "Fill Core", fillMode == true, () => {
+		fillMode = true
+		createFillDialog(true)
+	}).pad(vars.gridPad);
+	filldialogTable.row();
+
+	emptycheck = filldialogTable.check(vars.iconRoom + "Empty Core", fillMode == false, () => {
+		fillMode = false
+		createFillDialog(true)
+	}).pad(vars.gridPad);
+	filldialogTable.row();	
+};
+
 function createBlockDialog(){
 	blockdialog = new BaseDialog("Block Menu");
 	let blockTable = blockdialog.cont;
@@ -1121,25 +1392,34 @@ function createBlockDialog(){
 	});
 };
 
-function createRulesDialog(){
-	gamedialog = new BaseDialog("Rules Menu");
-	rulesTable = gamedialog.cont;
+function createRulesDialog(updateButtons){
+	let r
+	if (!updateButtons){
+		gamedialog = new BaseDialog("Rules Menu");
+		rulesTable = gamedialog.cont;
 
-	const r = rulesTable.table().center().top().get();
-	r.defaults().left()
-	r.button(Icon.zoom, Styles.flati, () => {
-		Core.scene.setKeyboardFocus(rsearch);
-	}).size(50, 50).get();
+		r = rulesTable.table().center().top().get();
+		r.defaults().left()
+		r.button(Icon.zoom, Styles.flati, () => {
+			Core.scene.setKeyboardFocus(rsearch);
+		}).size(50, 50).get();
+	}
+
+	gamedialog.buttons.clear()
+	gamedialog.addCloseButton();
+	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, clearbanned).width(300);
+	if (updateButtons){
+		return
+	}
+
 	var rsearch = r.field(rfilter, text => {
 		rfilter = text;
+		createRulesDialog(true);
 		updatestats(rfilter, rulesTable, Vars.state.rules);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	rsearch.setMessageText("Search Rules")
 	rulesTable.row();
 	updatestats("", rulesTable, Vars.state.rules);
-
-	gamedialog.addCloseButton();
-	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, clearbanned).width(300);
 };
 
 function createUnitStatDialog(){
@@ -1298,6 +1578,22 @@ function createSettings(){
 		addIntSetting("Range border Transparency", 0.001, 0.001, 0.5, 1.0, "The transparency of the border")
 		addIntSetting("Rebuild Time", 0, 0.1, 0, 120, "The amount of time between building blocks in Builder AI mode (in seconds)")
 		addTeamSetting("Default Team", Team.sharded)
+
+		p.button("Icon Library", Icon.menu, 40, () => {
+			var iconNames = []
+			var icons = []
+			var i = 0
+			for (let iconName in Icon){
+				if (Object.prototype.toString.call(Icon[iconName]) == "[object Function]" || Object.prototype.toString.call(Icon[iconName]) == "[object Undefined]" || iconName == "icons"){
+					continue
+				}
+				iconNames.push(iconName)
+				icons.push(Icon[iconName])
+				
+				i += 1
+			}
+			ui.selectgrid("Icons", iconNames, iconNames, i => {}, icons, vars.blocksperrow, "Search Icons")
+		}).size(250, 60).pad(vars.gridPad).tooltip("You're welcome in advance");
 		
     }).growY().growX();
     
@@ -1327,63 +1623,6 @@ function UpdateSettings(){
 }
 
 // Events
-function drawPosUnit() {
-	let x = 0
-	let y = 0
-    if (expectingPos == "Spawn" && !Core.scene.hasMouse()) {
-      x = Core.input.mouseWorldX();
-      y = Core.input.mouseWorldY();
-      if (Vars.net.client()) {
-        x = Mathf.floor(x);
-        y = Mathf.floor(y);
-      } 
-    } else if (shover) {
-      x = spos.x;
-      y = spos.y;
-    } else {
-      return;
-    } 
-    Draw.z(120.0);
-    Lines.stroke(1.0, team.color);
-    if (rand > 0)
-      Lines.circle(x, y, rand * 8.0); 
-    Draw.rect(Icon.effect.getRegion(), x, y, 8.0, 8.0);
-  }
-
-function drawPosBlock() {
-    let x = 0
-	let y = 0
-    let size = (block.size * 8);
-    let offset = ((1 - block.size % 2) * 8) / 2.0;
-	if (expectingPos == "Block" && !Core.scene.hasMouse()) {
-      x = (World.toTile(Core.input.mouseWorldX()) * Vars.tilesize);
-      y = (World.toTile(Core.input.mouseWorldY()) * Vars.tilesize);
-    } else if (bhover) {
-	x = Math.round(bpos.x / Vars.tilesize) * Vars.tilesize
-	y = Math.round(bpos.y / Vars.tilesize) * Vars.tilesize
-    } else {
-      return;
-    } 
-    Draw.z(120.0);
-
-    Lines.stroke(1.0, team.color);
-    Lines.rect(x - size / 2.0 + offset, y - size / 2.0 + offset, size, size);
-	// TODO: global variable bugs, so copypasta is needed
-	var rotations = [Icon.right, Icon.up, Icon.left, Icon.down]
-    Draw.rect(rotations[brot].getRegion(), x, y, 8.0, 8.0);
-  }
-
-function hasAmmo(build){
-	
-	if(build.block instanceof PowerTurret || build.block instanceof PointDefenseTurret || build.block instanceof TractorBeamTurret){
-		return build.power.status>0;
-	}
-	if(build.block instanceof Turret){
-		return build.hasAmmo();
-	}
-	return false;
-}
-
 Events.run(Trigger.draw, () => {
 	if (Vars.state.isGame()){
 		drawPosUnit();
@@ -1451,6 +1690,31 @@ function resetAmmoAI(){
 	targetAmmoAmount = null
 	targetAmmo = null
 }
+
+Events.on(UnitCreateEvent, event => {
+	let unit = event.unit
+	if (unitWarn && unit.team != Vars.player.team() && !teamData[unit.team]["units"].includes(unit.type.name)){
+		Vars.ui.hudfrag.showToast(new TextureRegionDrawable(unit.type.uiIcon), "Team " + unit.team.name + " has produced a " + unit.type.localizedName + " for the first time!");
+		teamData[unit.team]["units"].push(unit.type.name)
+	}
+	
+})
+
+Events.on(BlockBuildEndEvent, event => {
+	let build = event.tile.build
+	if (build.team != Vars.player.team() && build.block){
+		let block = build.block
+		if (blockWarn && blocksToWarn.includes(block) && !teamData[build.team]["blocks"].includes(block.name)){
+			Vars.ui.hudfrag.showToast(new TextureRegionDrawable(block.uiIcon), "Team " + build.team.name + " has built a " + block.localizedName + " for the first time!");
+			teamData[build.team]["blocks"].push(block.name)
+		}
+		if (resourcesWarn && resourcesToWarn.includes(block) && !teamData[build.team]["resources"].includes(block.outputItem.item)){
+			Vars.ui.hudfrag.showToast(new TextureRegionDrawable(block.outputItem.item.uiIcon), "Team " + build.team.name + " started " + block.outputItem.item.localizedName + " production!");
+			teamData[build.team]["resources"].push(block.outputItem.item)
+		}
+	}
+	
+})
 
 Events.run(Trigger.update, () => {
 	if (steamRect && bteamRect){
@@ -1586,6 +1850,12 @@ Events.run(Trigger.update, () => {
 });
 
 Events.on(EventType.WorldLoadEvent, e => {
+	teamData = {}
+	for (let i in Team.all){
+		let newTeamData = {"units" : [], "blocks": [], "resources": []}
+		teamData[Team.all[i]] = newTeamData
+	}
+
 	UpdateSettings()
 	viewtable.marginRight((Vars.ui.hudGroup.children.get(3).visible ? 146 : 0));
 	
@@ -1593,7 +1863,7 @@ Events.on(EventType.WorldLoadEvent, e => {
 	selectedai = "None"
 	changeAI("None")
 
-	if (rulesTable != null){updatestats(rfilter, rulesTable, Vars.state.rules)};
+	if (rulesTable != null){createRulesDialog(true); updatestats(rfilter, rulesTable, Vars.state.rules)};
 	bbteamRect.tint.set(Vars.player.team().color);
 });
 
@@ -1646,11 +1916,12 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 
 	// create dialogs
 	createRangeDialog();
+	createFillDialog(false);
 	createSpawnDialog();
 	createWeaponDialog();
 	createBlockDialog();
 	createStatusDialog();
-	createRulesDialog();
+	createRulesDialog(false);
 	createUnitStatDialog();
 	createBlockStatDialog();
 	createWeaponStatDialog();

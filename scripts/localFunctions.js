@@ -3,10 +3,20 @@ function removeWeapon(unit, weapon){
 	unit.weapons.remove(weapon)
 }
 
+function fillEmptyCoreLocal(core, fillMode){
+	if(core != null){
+		Vars.content.items().each(i => {
+			core.items.set(i, fillMode ? core.storageCapacity : 0);
+		});
+	}
+}
+
 function addWeapon(unit, weapons){
 	for (let i in weapons){
 		unit.weapons.add(weapons[i])
-		if (i == 1){
+		if (weapons.length == 1){
+			weapons[i].otherSide = -1
+		}else if (i == 1){
 			// if the other weapon is already added
 			weapons[i].otherSide = unit.weapons.size -1 - 1
 		}else{
@@ -124,4 +134,5 @@ module.exports = {
     clearbannedLocal : clearbannedLocal,
 	removeWeapon : removeWeapon,
 	addWeapon : addWeapon,
+	fillEmptyCoreLocal : fillEmptyCoreLocal,
 }

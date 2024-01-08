@@ -1,22 +1,20 @@
 /* UI Param */
 var TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
-const BarDist = 70;
-
+const BarDist = 102; // 70
+var buttonHeight = 55;
+var buttonWidth = 55;
+var miniButtonCut = 30
+var iconSize = 48;
+var fullIconSize = 30;
+var BarPad = 2;
 
 var unitsperrow = 10
 var blocksperrow = 15
 
-// var mobileWidth = 55;
-// var mobileHeight = 55;
-// var mobilePad = 5;
-
-var buttonHeight = 50;
-var buttonWidth = 50;
 var searchWidth = 500;
-var iconSize = 42;
 var gridPad = 5;
 var gridButtonSize = 76;
-var BarPad = 2;
+
 
 var optionButtonWidth = 220
 
@@ -59,4 +57,6 @@ module.exports = {
     rebuildPeriod : rebuildPeriod,
     rangeFillTransparency : rangeFillTransparency,
     rangeBorderTransparency : rangeBorderTransparency,
+    miniButtonCut : miniButtonCut,
+    fullIconSize : fullIconSize,
 }
