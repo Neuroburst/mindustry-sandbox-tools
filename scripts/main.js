@@ -18,14 +18,14 @@
 // change team rules
 
 // global power net
-// total unit count for evey team
+// total unit count for every team
 
 
+// alerts/notifs:
 // make enabled warnings save their enabled status
 // make blocks to warn customizable
 // add erikir blocks to lists
 // add more options
-// alerts/notifs
 
 
 // remember to use this to find properties/functions
@@ -106,7 +106,8 @@ var targetAmmoAmount
 var selectedai = "None";
 
 
-var folded = false
+var Bottomfolded = false
+var Topfolded = false
 
 /* Warnings */
 var teamData = {} // Data for each team and their accomplishments
@@ -864,8 +865,15 @@ function updateweaponslist(wtable){
 
 
 // UI Creation
-function createFolderButtons(spawntableinside, playertableinside, viewtableinside, cheats, spawns){
-	if (spawns){
+function createFolderButtons(spawntableinside, playertableinside, viewtableinside, cheats, spawns, view, viewFold, playerFold){
+	if (viewFold == null){
+		viewFold = true
+	}
+	if (playerFold == null){
+		playerFold = true
+	}
+
+	if (view){
 		let rangeHold = 0;
 		let tRange = ui.createButton(viewtable, viewtableinside, "ShowTurretRange", Icon.turret, "Show turret range (hold down for more options)", Styles.defaulti, false, () => {
 			if(rangeHold > vars.longPress){return}
@@ -920,7 +928,6 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 				warnings.style.imageUpColor = Color.white
 			}}
 		warnings = ui.createButton(viewtable, viewtableinside, "Warnings", Icon.warning, "Show alerts for enemy development", Styles.defaulti, false, setupWarnings);
-		allWarnings = !allWarnings // flip it
 
 		warnings.style.up = Tex.buttonSideLeft
 		warnings.style.over = Tex.buttonSideLeftDown
@@ -990,8 +997,25 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		powerwarn.style.up = Tex.buttonSideRight
 		powerwarn.style.over = Tex.buttonSideRightDown
 		powerwarn.style.down = Tex.buttonSideRightOver
+		allWarnings = !allWarnings // flip it
 		setupWarnings()
+
 		
+		ui.createButton(viewtable, viewtableinside, "Unit Count", Icon.chartBar, "View total unit count", Styles.defaulti, false, () => {
+			
+		});
+	}
+
+	if (viewFold){
+		ui.createButton(viewtable, viewtableinside, "FoldViewShelf", (Topfolded ? Icon.leftOpen : Icon.rightOpen), (Topfolded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false, () => {
+			Topfolded = !Topfolded
+			viewtableinside.clear()
+			createFolderButtons(spawntableinside, playertableinside, viewtableinside, false, false, !Topfolded, null, false)
+		});
+	}
+
+
+	if (spawns){
 		let rulesButton = ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
 			if (Vars.state.rules.sector) {
 				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
@@ -1060,30 +1084,26 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		blockButton.hovered(() => {bhover = true});
 		blockButton.exited(() => {bhover = false});
 	}
-	let foldButton = ui.createButton(playertable, playertableinside, "Fold Shelf", (folded ? Icon.upOpen : Icon.downOpen), (folded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
-		folded = !folded
-		
-		if (folded){
-			spawntable.visible = false
+
+	if (playerFold){
+		ui.createButton(playertable, playertableinside, "Fold Shelf", (Bottomfolded ? Icon.upOpen : Icon.downOpen), (Bottomfolded ? "Unfold the shelf" : "Fold the shelf"), Styles.defaulti, false,  () => {
+			Bottomfolded = !Bottomfolded
+
+			spawntable.visible = !Bottomfolded
 			playertableinside.clear()
-			createFolderButtons(spawntableinside, playertableinside, viewtableinside, false, false)
-		}else{
+			createFolderButtons(spawntableinside, playertableinside, viewtableinside, !Bottomfolded, false, false, false)
+			
+		});
 
-			spawntable.visible = true
-			playertableinside.clear()
-			createFolderButtons(spawntableinside, playertableinside, viewtableinside, true, false)
-		}
-		
-	});
+		aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
+			ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
+		});
 
-	aiButton = ui.createButton(playertable, playertableinside, "Change AI", Icon.logic, "Change player AI", Styles.defaulti, false, () => {
-		ui.select("Choose player AI", ais, value => {selectedai = changeAI(value)}, ais, null);
-	});
-
-	let upgradeButton = ui.createButton(playertable, playertableinside, "Upgrade", Icon.up, "Upgrade blocks", Styles.defaulti, false, () => {
-		ui.select("Choose upgrade type", upgrades, value => {Upgrade(value)}, upgrades, null);
-	});
-	//upgradeButton.style.imageUpColor = Color.orange
+		let upgradeButton = ui.createButton(playertable, playertableinside, "Upgrade", Icon.up, "Upgrade blocks", Styles.defaulti, false, () => {
+			ui.select("Choose upgrade type", upgrades, value => {Upgrade(value)}, upgrades, null);
+		});
+		//upgradeButton.style.imageUpColor = Color.orange
+	}
 
 	if (cheats){
 		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
@@ -1566,11 +1586,11 @@ function createSettings(){
         //     p.row();
         // }
         addLabel("- - -  UI  - - -")
-		addBoolSetting("Start Folded", false, "Whether or not to make the Sandbox Tools shelf folded by default (Restart required to take effect)")
+		addBoolSetting("Start Folded", false, "Whether or not to make the bottom Sandbox Tools shelf folded by default (Restart required to take effect)")
 		addIntSetting("Button Padding", 0, 0.25, 2, 20, "The Padding between the buttons in the Sandbox Tools shelf (Restart required to take effect)")
 		addIntSetting("Units per row", 1, 1, 10, 30, "The amounts of units shown per row")
 		addIntSetting("Blocks per row", 0, 1, 15, 30, "The amount of blocks shown per row")
-		addIntSetting("Long press Time", 1, 1, 30, 120, "The amount of seconds for a long press")
+		addIntSetting("Long press Time", 1, 1, 30, 120, "The amount of time for a long press")
 
 		addLabel("- - -  Other  - - -")
 		addBoolSetting("Instant Kill", false, "Instantly Die.")
@@ -1702,7 +1722,7 @@ Events.on(UnitCreateEvent, event => {
 
 Events.on(BlockBuildEndEvent, event => {
 	let build = event.tile.build
-	if (build.team != Vars.player.team() && build.block){
+	if (build && build.team != Vars.player.team() && build.block){
 		let block = build.block
 		if (blockWarn && blocksToWarn.includes(block) && !teamData[build.team]["blocks"].includes(block.name)){
 			Vars.ui.hudfrag.showToast(new TextureRegionDrawable(block.uiIcon), "Team " + build.team.name + " has built a " + block.localizedName + " for the first time!");
@@ -1823,7 +1843,7 @@ Events.run(Trigger.update, () => {
 	}
 
 	if (Vars.ui.hudGroup){
-		if (!folded){
+		if (!Bottomfolded){
 			spawntable.visible = Vars.ui.hudGroup.children.get(4).visible
 		}
 		playertable.visible = Vars.ui.hudGroup.children.get(4).visible
@@ -1905,13 +1925,14 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	})).padBottom(0 + vars.TCOffset).padLeft(0).name("PlayerTable");
 
 	// create buttons in folders
-	createFolderButtons(spawntableinside, playertableinside, viewtableinside, true, true);
+	createFolderButtons(spawntableinside, playertableinside, viewtableinside, true, true, true);
 
 	if (vars.startFolded){
-		folded = true
+		Bottomfolded = true
 		spawntable.visible = false
+		viewtableinside.clear()
 		playertableinside.clear()
-		createFolderButtons(spawntableinside, playertableinside, viewtableinside, false, false)
+		createFolderButtons(spawntableinside, playertableinside, viewtableinside, false, false, true)
 	}
 
 	// create dialogs
