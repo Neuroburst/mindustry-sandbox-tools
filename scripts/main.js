@@ -18,7 +18,6 @@
 // change team rules
 
 // global power net
-// total unit count for every team
 
 
 // alerts/notifs:
@@ -26,6 +25,9 @@
 // make blocks to warn customizable
 // add erikir blocks to lists
 // add more options
+
+
+// total unit count for every team
 
 
 // remember to use this to find properties/functions
@@ -1122,6 +1124,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let fillHold = 0
 		let fillButton = ui.createButton(playertable, playertableinside, "Fill Core", Icon.commandRally, "Fill/Empty core (hold down for more options)", Styles.defaulti, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
 			if (fillHold > vars.longPress){return};
 			fillEmptyCore()
 		});
@@ -1250,9 +1256,9 @@ function createStatusDialog(){
 
 	const o = statusTable.table().center().bottom().pad(vars.gridPad).get();
 	o.defaults().left();
-	o.button("Apply Effect", Icon.add, apply).width(vars.optionButtonWidth).pad(vars.gridPad);
-	let permButton = o.button("Apply Permanently", Icon.save, applyperma).width(300).pad(vars.gridPad);
-	permButton.disabled(() => effect.permanent)
+	let applyButton = o.button("Apply Effect", Icon.add, apply).width(vars.optionButtonWidth).pad(vars.gridPad);
+	o.button("Apply Permanently", Icon.save, applyperma).width(300).pad(vars.gridPad);
+	applyButton.disabled(() => effect.permanent)
 	
 };
 
@@ -1889,6 +1895,9 @@ Events.on(EventType.WorldLoadEvent, e => {
 });
 
 Events.on(EventType.ClientLoadEvent, cons(() => {
+	Vars.renderer.minZoom = 0.667;
+	Vars.renderer.maxZoom = 24.0;
+
 	createSettings();
 	UpdateSettings()
 
