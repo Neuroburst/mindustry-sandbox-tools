@@ -5,6 +5,7 @@
 
 // auto-ammo ai for turrets on servers // depositing resources in ANY AI on a server is also broked
 
+// better team selection menu (grid?)
 
 // Stats to add:
 // Block.requirements
@@ -18,6 +19,7 @@
 // change team rules
 
 // global power net
+// compensate for range boost in turrets
 
 
 // alerts/notifs:
@@ -176,7 +178,6 @@ var rotb;
 
 // filtering for search
 var ufilter = "";
-var bfilter = "";
 var rfilter = "";
 var usfilter = "";
 var bsfilter = "";
@@ -184,32 +185,13 @@ var wsfilter = "";
 var bufilter = "";
 
 
-/* Remote */
-var playername = "";
-
-
-/* click capture */
-var clickEvents = [];
-const world = new Vec2();
-// handling click events
-function click(handler, world){
-	clickEvents.push({
-		handler: handler,
-		world: world
-	});
-	return clickEvents.length - 1;
-};
-
-
 // functions
 function removeWeapon(){
 	(Vars.net.client() ? remoteF.removeWeapon : localF.removeWeapon)(unitstat, weaponstat);
-}
-
+};
 function addWeapon(weapons){
 	(Vars.net.client() ? remoteF.addWeapon : localF.addWeapon)(unitstat, weapons);
-}
-
+};
 function spawn() {
 	(Vars.net.client() ? remoteF.spawnRemote : localF.spawnLocal)(spos, count, rand, spawning, team, fuser, fuseMode);
 };
@@ -228,11 +210,9 @@ function apply(perma) {
 function applyperma() {
 	apply(true);
 };
-
 function fillEmptyCore() {
 	(Vars.net.client() ? remoteF.fillEmptyCoreRemote : localF.fillEmptyCoreLocal)(Vars.player.unit().core(), fillMode);
-}
-
+};
 function kill() {
 	(Vars.net.client() ? remoteF.killRemote : localF.killLocal)(vars.instantkill);
 };
@@ -242,11 +222,9 @@ function clear() {
 function clearbanned() {
 	(Vars.net.client() ? remoteF.clearbannedRemote : localF.clearbannedLocal)();
 };
-
 function AddtoPlan(build, block){
 	Vars.player.unit().addBuild(new BuildPlan(build.x / Vars.tilesize, build.y / Vars.tilesize, build.rotation, block, null), false)
-}
-
+};
 function Upgrade(type){
 	var builds = Vars.player.team().data().buildings
 
@@ -353,7 +331,8 @@ function changeAI(value) {
 function currentunit(){
 	unitstat = Vars.player.unit().type
 	if (statsTable != null){updatestats(usfilter, statsTable, unitstat)};
-}
+};
+
 
 function drawPosUnit() {
 	let x = 0
@@ -376,8 +355,7 @@ function drawPosUnit() {
     if (rand > 0)
       Lines.circle(x, y, rand * 8.0); 
     Draw.rect(Icon.effect.getRegion(), x, y, 8.0, 8.0);
-  }
-
+};
 function drawPosBlock() {
     let x = 0
 	let y = 0
@@ -399,8 +377,7 @@ function drawPosBlock() {
 	// TODO: global variable bugs, so copypasta is needed
 	var rotations = [Icon.right, Icon.up, Icon.left, Icon.down]
     Draw.rect(rotations[brot].getRegion(), x, y, 8.0, 8.0);
-  }
-
+};
 function hasAmmo(build){
 	
 	if(build.block instanceof PowerTurret || build.block instanceof PointDefenseTurret || build.block instanceof TractorBeamTurret){
@@ -410,7 +387,17 @@ function hasAmmo(build){
 		return build.hasAmmo();
 	}
 	return false;
-}
+};
+function createMovementVec(posx, posy, unit){
+	return new Vec2().set(new Vec2(posx, posy)).sub(unit).limit(unit.speed())
+};
+function resetAmmoAI(){
+	ammoMode = "Find"
+	requestCooldown = 0
+	targetBuild = null
+	targetAmmoAmount = null
+	targetAmmo = null
+};
 
 
 // Update lists
@@ -519,7 +506,7 @@ function updatespawnlist(filter, utable){
 	poss = u.button("Set Position", Icon.effect, () => {
 		spawndialog.hide();
 		expectingPos = "Spawn";
-	 	click((screen, world) => {
+	 	ui.click((screen, world) => {
 			expectingPos = false;
 	 		// We don't need sub-wu precision + make /js output nicer
 	 		spos.set(Math.round(world.x), Math.round(world.y));
@@ -593,7 +580,7 @@ function updateblocklist(filter, blockTable){
 	posb = o.button("Set Position", Icon.effect, () => {
 		blockdialog.hide();
 		expectingPos = "Block";
-	 	click((screen, world) => {
+	 	ui.click((screen, world) => {
 			expectingPos = false;
 	 		// We don't need sub-wu precision + make /js output nicer
 	 		bpos.set(Math.round(world.x), Math.round(world.y));
@@ -1004,7 +991,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		
 		ui.createButton(viewtable, viewtableinside, "Unit Count", Icon.chartBar, "View total unit count", Styles.defaulti, false, () => {
-			
+			ui.select("Team", Team.all, t => {
+				
+				teamRect.tint.set(t.color);
+			}, (i, t) => "[#" + t.color + "]" + t, null);
 		});
 	}
 
@@ -1524,6 +1514,7 @@ function createBlockStatDialog(){
 		}, bicons, vars.blocksperrow, "Search Blocks");
 	}).width(300).get();
 };
+
 function createSettings(){
 	const dialog = new BaseDialog("Sandbox Tools Settings");
     dialog.addCloseButton();
@@ -1706,18 +1697,6 @@ Events.run(Trigger.draw, () => {
 	Draw.reset();
 })
 
-function createMovementVec(posx, posy, unit){
-	return new Vec2().set(new Vec2(posx, posy)).sub(unit).limit(unit.speed())
-}
-
-function resetAmmoAI(){
-	ammoMode = "Find"
-	requestCooldown = 0
-	targetBuild = null
-	targetAmmoAmount = null
-	targetAmmo = null
-}
-
 Events.on(UnitCreateEvent, event => {
 	let unit = event.unit
 	if (unitWarn && unit.team != Vars.player.team() && !teamData[unit.team]["units"].includes(unit.type.name)){
@@ -1856,24 +1835,6 @@ Events.run(Trigger.update, () => {
 		playertable.visible = Vars.ui.hudGroup.children.get(4).visible
 		viewtable.visible = Vars.ui.hudGroup.children.get(4).visible
 	}
-
-	if (!Core.input.justTouched()) {
-		return;
-	}
-	// Position in the mindustry world
-	world.set(Core.input.mouseWorld());
-	// 0, 0 to w, h
-	const pos = Core.input.mouse();
-	const hasMouse = Core.scene.hasMouse();
-
-	clickEvents = clickEvents.filter(event => {
-		// Mod cancelled the event
-		if (!event) return;
-		// Clicked over a UI element, try again next time
-		if (event.world && hasMouse) return true;
-
-		return event.handler(pos, world, hasMouse);
-	});
 });
 
 Events.on(EventType.WorldLoadEvent, e => {
@@ -1902,7 +1863,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	UpdateSettings()
 
 	// Multiplayer
-	playername = Core.settings.getString("name").trim();
+	//playername = Core.settings.getString("name").trim();
 
 
 	// Add the tables for the buttons

@@ -4,6 +4,40 @@ var selectdialog = null;
 var selectgriddialog = null;
 var selectgridfilter = "";
 
+/* click capture */
+var clickEvents = [];
+const world = new Vec2();
+// handling click events
+function click(handler, world){
+	clickEvents.push({
+		handler: handler,
+		world: world
+	});
+	return clickEvents.length - 1;
+};
+
+// click events
+Events.run(Trigger.update, () => {
+	if (!Core.input.justTouched()) {
+		return;
+	}
+	// Position in the mindustry world
+	world.set(Core.input.mouseWorld());
+	// 0, 0 to w, h
+	const pos = Core.input.mouse();
+	const hasMouse = Core.scene.hasMouse();
+
+	clickEvents = clickEvents.filter(event => {
+		// Mod cancelled the event
+		if (!event) return;
+		// Clicked over a UI element, try again next time
+		if (event.world && hasMouse) return true;
+
+		return event.handler(pos, world, hasMouse);
+	});
+});
+
+
 /* UI Creation and Utilities (Essentially re-writing certain parts of ui-lib) */
 function createButton(parent, superparent, name, icon, tooltip, style, return_cell, clicked, iconSizeOverride, mini){
 	if (!mini){
@@ -189,4 +223,5 @@ module.exports = {
     createButton : createButton,
     select : select,
     selectgrid : selectgrid,
+	click : click,
 }
