@@ -1,3 +1,5 @@
+// General Parameters
+
 /* UI Param */
 var TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
 const BarDist = 102; // 70
@@ -33,6 +35,7 @@ var rebuildPeriod = 0;
 
 var rangeFillTransparency = 0.02
 var rangeBorderTransparency = 0.5
+
 
 module.exports = {
     defaultUnit : defaultUnit,

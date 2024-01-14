@@ -1,4 +1,4 @@
-const localF = require("localFunctions");
+const localF = require("sandbox-tools/localFunctions");
 
 /* Multiplayer Functions */
 function definefindp() {

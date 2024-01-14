@@ -1,4 +1,6 @@
-const vars = require("vars")
+// Static ui creation helper functions
+
+const vars = require("sandbox-tools/vars")
 
 var selectdialog = null;
 var selectgriddialog = null;
