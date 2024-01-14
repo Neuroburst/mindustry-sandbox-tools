@@ -2,7 +2,7 @@
 
 /* UI Param */
 var TCOffset = Core.settings.getBool("mod-time-control-enabled", false) ? 62 : 0;
-const BarDist = 102; // 70
+const BarDist = 104; // 70
 var buttonHeight = 55;
 var buttonWidth = 55;
 var miniButtonCut = 30
@@ -11,6 +11,7 @@ var fullIconSize = 30;
 var BarPad = 2;
 
 var unitsperrow = 10
+var teamsperrow = 8
 var blocksperrow = 15
 
 var searchWidth = 500;
@@ -43,6 +44,7 @@ module.exports = {
     TCOffset : TCOffset,
     unitsperrow : unitsperrow,
     blocksperrow : blocksperrow,
+    teamsperrow : teamsperrow,
     buttonHeight : buttonHeight,
     buttonWidth : buttonWidth,
     searchWidth : searchWidth,

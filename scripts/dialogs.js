@@ -1,6 +1,6 @@
 // Dialog creation
 
-var main
+var engine
 const vars = require("sandbox-tools/vars")
 const ui = require("sandbox-tools/ui")
 
@@ -33,26 +33,28 @@ var weaponTable
 var weaponStatsTable
 var bulletStatsTable
 
+var spawnerButton;
+var spawningLabelText;
+var placeButton;
+
 function createDialogs(){
-    for (let stat in main){print(stat)}
-    return
     createRangeDialog();
-	// createFillDialog(false);
-	// createSpawnDialog();
-	// createWeaponDialog();
-	// createBlockDialog();
-	// createStatusDialog();
-	//createRulesDialog(false);
-	// createUnitStatDialog();
-	// createBlockStatDialog();
-	// createWeaponStatDialog();
-	// createBulletStatDialog();
+	createFillDialog(false);
+	createSpawnDialog();
+	createWeaponDialog();
+	createBlockDialog();
+	createStatusDialog();
+	createRulesDialog(false);
+	createUnitStatDialog();
+	createBlockStatDialog();
+	createWeaponStatDialog();
+	createBulletStatDialog();
 }
 
 function createStatusDialog(){
 	statusdialog = new BaseDialog("Status Menu");
 	let statusTable = statusdialog.cont;
-	statusTable.label(() => effect.localizedName + (effect.permanent ? " (Permanent effect)" : ""));
+	statusTable.label(() => engine.effect.localizedName + (engine.effect.permanent ? " (Permanent effect)" : ""));
 	statusTable.row();
 
 	statusTable.pane(elist => {
@@ -69,8 +71,8 @@ function createStatusDialog(){
 			var icon = new TextureRegionDrawable(eff.uiIcon);
 
 			let b = elist.button(icon, () => {
-				effect = eff;
-				statusButton.style.imageUp = icon;
+				engine.effect = eff;
+				engine.statusButton.style.imageUp = icon;
 			}).pad(vars.gridPad).size(vars.gridButtonSize);
 			let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(eff.localizedName).style(Styles.outlineLabel)})
 			b.get().addListener(tooltip)
@@ -81,26 +83,26 @@ function createStatusDialog(){
 	const d = statusTable.table().center().bottom().pad(vars.gridPad).get();
 	var dSlider, dField;
 	d.defaults().left();
-	dSlider = d.slider(0, main.maxDuration, 0.125, main.duration, n => {
-		main.duration = n;
+	dSlider = d.slider(0, engine.maxDuration, 0.125, engine.duration, n => {
+		engine.duration = n;
 		dField.text = n;
 	}).get();
 	d.add(vars.iconRoom + "Duration: ");
-	dField = d.field("" + main.duration, text => {
-		main.duration = parseInt(text);
-		dSlider.value = main.duration;
+	dField = d.field("" + engine.duration, text => {
+		engine.duration = parseInt(text);
+		dSlider.value = engine.duration;
 	}).get();
 	dField.validator = text => !isNaN(parseInt(text));
 	statusTable.row();
 
 	statusdialog.addCloseButton();
-	statusdialog.buttons.button("Clear Effects", Icon.cancel, main.clear);//.width(vars.optionButtonWidth).pad(vars.gridPad);
+	statusdialog.buttons.button("Clear Effects", Icon.cancel, engine.clear);//.width(vars.optionButtonWidth).pad(vars.gridPad);
 
 	const o = statusTable.table().center().bottom().pad(vars.gridPad).get();
 	o.defaults().left();
-	let applyButton = o.button("Apply Effect", Icon.add, main.apply).width(vars.optionButtonWidth).pad(vars.gridPad);
-	o.button("Apply Permanently", Icon.save, main.applyperma).width(300).pad(vars.gridPad);
-	applyButton.disabled(() => effect.permanent)
+	let applyButton = o.button("Apply Effect", Icon.add, engine.apply).width(vars.optionButtonWidth).pad(vars.gridPad);
+	o.button("Apply Permanently", Icon.save, engine.applyperma).width(300).pad(vars.gridPad);
+	applyButton.disabled(() => engine.effect.permanent)
 	
 };
 
@@ -112,30 +114,30 @@ function createSpawnDialog(){
 	i.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ssearch);
 	}).size(50, 50).get()
-	var ssearch = i.field(main.ufilter, text => {
-		main.ufilter = text;
-		updatespawnlist(main.ufilter, spawnTable)
+	var ssearch = i.field(engine.ufilter, text => {
+		engine.ufilter = text;
+		updatespawnlist(engine.ufilter, spawnTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	ssearch.setMessageText("Search Units")
 	spawnTable.row();
 
-	spawnTable.label(() => main.spawningLabelText);
-	main.spawningLabelText = main.spawning.localizedName;
+	spawnTable.label(() => spawningLabelText);
+	spawningLabelText = engine.spawning.localizedName;
 	updatespawnlist("", spawnTable);
 
 	spawndialog.addCloseButton();
 	
-	main.spawnerButton = ui.createButton(spawndialog.buttons, null, "Spawn", new TextureRegionDrawable(main.spawning.uiIcon), "", Styles.defaulti, true, () => {
-		spawn();
-	}).disabled(() => !Vars.world.passable(spos.x / 8, spos.y / 8)).width(300).get();
-	main.spawnerButton.label(() => vars.iconRoom + "Spawn")
+	spawnerButton = ui.createButton(spawndialog.buttons, null, "Spawn", new TextureRegionDrawable(engine.spawning.uiIcon), "", Styles.defaulti, true, () => {
+		engine.spawn();
+	}).disabled(() => !Vars.world.passable(engine.spos.x / 8, engine.spos.y / 8)).width(300).get();
+	spawnerButton.label(() => vars.iconRoom + "Spawn")
 
-	main.steamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
-	main.steamRect.tint.set(main.team.color);
-	spawndialog.buttons.button("Team", main.steamRect, vars.iconSize, () => {
+	engine.steamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
+	engine.steamRect.tint.set(engine.team.color);
+	spawndialog.buttons.button("Team", engine.steamRect, vars.iconSize, () => {
 	 	ui.select("Team", Team.all, t => {
-	 		main.team = t;
-	 		main.steamRect.tint.set(main.team.color);
+	 		engine.team = t;
+	 		engine.steamRect.tint.set(engine.team.color);
 	 	}, (i, t) => "[#" + t.color + "]" + t, null);
 	});
 };
@@ -156,16 +158,16 @@ function createWeaponStatDialog(){
 	ws.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(wssearch);
 	}).size(50, 50).get();
-	var wssearch = ws.field(main.wsfilter, text => {
-		main.wsfilter = text;
-		updatestats(main.wsfilter, weaponStatsTable, main.weaponstat);
+	var wssearch = ws.field(engine.wsfilter, text => {
+		engine.wsfilter = text;
+		updatestats(engine.wsfilter, weaponStatsTable, engine.weaponstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	wssearch.setMessageText("Search Weapon Stats")
 	weaponStatsTable.row();
-	updatestats("", weaponStatsTable, main.weaponstat);	
+	updatestats("", weaponStatsTable, engine.weaponstat);	
 	weaponstatdialog.addCloseButton();
 	weaponstatdialog.buttons.button("Remove Weapon", Icon.cancel, () => {
-		removeWeapon();
+		engine.removeWeapon();
 		updateweaponslist(weaponTable);
 		weaponstatdialog.hide()
 	}).width(vars.optionButtonWidth);
@@ -180,26 +182,26 @@ function createBulletStatDialog(){
 	bu.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(busearch);
 	}).size(50, 50).get();
-	var busearch = bu.field(main.ufilter, text => {
-		main.ufilter = text;
-		updatestats(main.ufilter, bulletStatsTable, main.bulletstat);
+	var busearch = bu.field(engine.ufilter, text => {
+		engine.ufilter = text;
+		updatestats(engine.ufilter, bulletStatsTable, engine.bulletstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	busearch.setMessageText("Search Bullet Stats")
 	bulletStatsTable.row();
-	updatestats("", bulletStatsTable, main.bulletstat);
+	updatestats("", bulletStatsTable, engine.bulletstat);
 	bulletstatdialog.addCloseButton();
 }
 
 function createRangeDialog(){
 	rangedialog = new BaseDialog("Range Menu");
 	let rangedialogTable = rangedialog.cont;
-	rangedialogTable.check(vars.iconRoom + "Show Ground", main.getviewGroundRange(), () => {
-		main.setviewGroundRange(!main.getviewGroundRange())
+	rangedialogTable.check(vars.iconRoom + "Show Ground", engine.viewGroundRange, () => {
+		engine.viewGroundRange = !engine.viewGroundRange
 	}).pad(vars.gridPad);
 	rangedialogTable.row();
 
-	rangedialogTable.check(vars.iconRoom + "Show Air", main.getviewAirRange(), () => {
-		main.setviewAirRange(!main.getviewAirRange())
+	rangedialogTable.check(vars.iconRoom + "Show Air", engine.viewAirRange, () => {
+		engine.viewAirRange = !engine.viewAirRange
 	}).pad(vars.gridPad);
 	rangedialogTable.row();
 	
@@ -214,14 +216,14 @@ function createFillDialog(refresh){
 	}
 
 	let emptycheck
-	filldialogTable.check(vars.iconRoom + "Fill Core", main.fillMode == true, () => {
-		main.fillMode = true
+	filldialogTable.check(vars.iconRoom + "Fill Core", engine.fillMode == true, () => {
+		engine.fillMode = true
 		createFillDialog(true)
 	}).pad(vars.gridPad);
 	filldialogTable.row();
 
-	emptycheck = filldialogTable.check(vars.iconRoom + "Empty Core", main.fillMode == false, () => {
-		main.fillMode = false
+	emptycheck = filldialogTable.check(vars.iconRoom + "Empty Core", engine.fillMode == false, () => {
+		engine.fillMode = false
 		createFillDialog(true)
 	}).pad(vars.gridPad);
 	filldialogTable.row();	
@@ -235,28 +237,28 @@ function createBlockDialog(){
 	b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
 	}).size(50, 50).get();
-	var bsearch = b.field(main.ufilter, text => {
-		main.ufilter = text;
-		updateblocklist(main.ufilter, blockTable)
+	var bsearch = b.field(engine.ufilter, text => {
+		engine.ufilter = text;
+		updateblocklist(engine.ufilter, blockTable)
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	bsearch.setMessageText("Search Blocks")
 	blockTable.row();
 
-	blockTable.label(() => main.block.localizedName);
+	blockTable.label(() => engine.block.localizedName);
 	updateblocklist("", blockTable);
 
 	blockdialog.addCloseButton();
 
-	main.placeButton = blockdialog.buttons.button("Place", new TextureRegionDrawable(main.block.uiIcon), 42, () => {
-		spawnblock(false);
-	}).disabled(() => !Vars.world.passable(bpos.x / 8, bpos.y / 8)).width(300).get();
+	spawningLabelText = blockdialog.buttons.button("Place", new TextureRegionDrawable(engine.block.uiIcon), 42, () => {
+		engine.spawnblock(false);
+	}).disabled(() => !Vars.world.passable(engine.bpos.x / 8, engine.bpos.y / 8)).width(300).get();
 
-	main.bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
-	main.bteamRect.tint.set(main.team.color);
-	blockdialog.buttons.button("Team", main.bteamRect, vars.iconSize, () => {
+	engine.bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
+	engine.bteamRect.tint.set(engine.team.color);
+	blockdialog.buttons.button("Team", engine.bteamRect, vars.iconSize, () => {
 		ui.select("Team", Team.all, t => {
-			main.team = t;
-			main.bteamRect.tint.set(main.team.color);
+			engine.team = t;
+			engine.bteamRect.tint.set(engine.team.color);
 		}, (i, t) => "[#" + t.color + "]" + t, null);
 	});
 };
@@ -276,15 +278,15 @@ function createRulesDialog(updateButtons){
 
 	gamedialog.buttons.clear()
 	gamedialog.addCloseButton();
-	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, main.clearbanned).width(300);
+	gamedialog.buttons.button("Clear Banned Blocks", Icon.cancel, engine.clearbanned).width(300);
 	if (updateButtons){
 		return
 	}
 
-	var rsearch = r.field(main.rfilter, text => {
-		main.rfilter = text;
+	var rsearch = r.field(engine.rfilter, text => {
+		engine.rfilter = text;
 		createRulesDialog(true);
-		updatestats(main.rfilter, rulesTable, Vars.state.rules);
+		updatestats(engine.rfilter, rulesTable, Vars.state.rules);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	rsearch.setMessageText("Search Rules")
 	rulesTable.row();
@@ -300,13 +302,13 @@ function createUnitStatDialog(){
 	u.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(ussearch);
 	}).size(50, 50).get();
-	var ussearch = u.field(main.usfilter, text => {
-		main.usfilter = text;
-		updatestats(main.usfilter, statsTable, main.unitstat);
+	var ussearch = u.field(engine.usfilter, text => {
+		engine.usfilter = text;
+		updatestats(engine.usfilter, statsTable, engine.unitstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	ussearch.setMessageText("Search Unit Stats")
 	statsTable.row();
-	updatestats("", statsTable, main.unitstat);
+	updatestats("", statsTable, engine.unitstat);
 	statdialog.addCloseButton();
 	
 	var icons = []
@@ -316,19 +318,21 @@ function createUnitStatDialog(){
 		processedUnits.push(Vars.content.units().get(n).localizedName)
 	};
 	
-	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(main.unitstat.uiIcon), "", Styles.defaulti, true, () => {
+	let cunit = ui.createButton(statdialog.buttons, null, "Choose Unit", new TextureRegionDrawable(engine.unitstat.uiIcon), "", Styles.defaulti, true, () => {
 		ui.selectgrid("Choose Unit", processedUnits, Vars.content.units(), u => {
-			main.unitstat = u;
-			var icon = new TextureRegionDrawable(main.unitstat.uiIcon)
+			engine.unitstat = u;
+			var icon = new TextureRegionDrawable(engine.unitstat.uiIcon)
 			cunit.style.imageUp = icon
-			if (statsTable != null){updatestats(main.usfilter, statsTable, main.unitstat)};
+			if (statsTable != null){updatestats(engine.usfilter, statsTable, engine.unitstat)};
 		}, icons, vars.unitsperrow, "Search Units");
 	}).width(300).get();
 	cunit.label(() => vars.iconRoom + "Choose Unit")
 
 	statdialog.buttons.button("Choose Current Unit", Icon.effect, () => {
-		currentunit();
-		var icon = new TextureRegionDrawable(main.unitstat.uiIcon)
+		engine.unitstat = Vars.player.unit().type
+		if (statsTable != null){updatestats(usfilter, diag.statsTable, engine.unitstat)};
+
+		var icon = new TextureRegionDrawable(engine.unitstat.uiIcon)
 		cunit.style.imageUp = icon
 	}).width(300);
 };
@@ -342,13 +346,13 @@ function createBlockStatDialog(){
 	b.button(Icon.zoom, Styles.flati, () => {
 		Core.scene.setKeyboardFocus(bsearch);
 	}).size(50, 50).get();
-	var bsearch = b.field(main.bsfilter, text => {
-		main.bsfilter = text;
-		updatestats(main.bsfilter, blockStatsTable, main.blockstat);
+	var bsearch = b.field(engine.bsfilter, text => {
+		engine.bsfilter = text;
+		updatestats(engine.bsfilter, blockStatsTable, engine.blockstat);
 	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 	bsearch.setMessageText("Search Block Stats")
 	blockStatsTable.row();
-	updatestats("", blockStatsTable, main.blockstat);
+	updatestats("", blockStatsTable, engine.blockstat);
 	bstatdialog.addCloseButton();
 
 	var bicons = []
@@ -358,11 +362,11 @@ function createBlockStatDialog(){
 		processedBlocks.push(Vars.content.blocks().get(n).localizedName)
 	};
 
-	let cblock = bstatdialog.buttons.button("Choose Block", new TextureRegionDrawable(main.blockstat.uiIcon), 42, () => {
+	let cblock = bstatdialog.buttons.button("Choose Block", new TextureRegionDrawable(engine.blockstat.uiIcon), 42, () => {
 		ui.selectgrid("Choose Block", processedBlocks, Vars.content.blocks(), b => {
-			main.blockstat = b;
-			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(main.blockstat.uiIcon));
-			if (blockStatsTable != null){updatestats(main.bsfilter, blockStatsTable, main.blockstat)};
+			engine.blockstat = b;
+			cblock.getCells().first().get().setDrawable(new TextureRegionDrawable(engine.blockstat.uiIcon));
+			if (blockStatsTable != null){updatestats(engine.bsfilter, blockStatsTable, engine.blockstat)};
 		}, bicons, vars.blocksperrow, "Search Blocks");
 	}).width(300).get();
 };
@@ -403,17 +407,17 @@ function updatespawnlist(filter, utable){
 
 				const icon = new TextureRegionDrawable(unit.uiIcon);
 				let b = slist.button(icon, () => {
-					if (fuseMode) {
-						fuser = unit;
-						spawningLabelText = spawning.localizedName + " fused with " + fuser.localizedName;
+					if (engine.fuseMode) {
+						engine.fuser = unit;
+						spawningLabelText = engine.spawning.localizedName + " fused with " + engine.fuser.localizedName;
 					}else{
-						spawning = unit;
-						spawningLabelText = spawning.localizedName;
+						engine.spawning = unit;
+						spawningLabelText = engine.spawning.localizedName;
 					};
-					if (!fuseMode){
+					if (!engine.fuseMode){
 						spawnerButton.style.imageUp = icon;
 					}
-					spawnMenuButton.style.imageUp = icon;
+					engine.spawnMenuButton.style.imageUp = icon;
 				}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(unit.localizedName);
 				let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(unit.localizedName).style(Styles.outlineLabel)})
 				b.get().addListener(tooltip)
@@ -425,14 +429,14 @@ function updatespawnlist(filter, utable){
 	/* Random selection */
 	let r = utable.table().center().bottom().get();
 	r.defaults().left();
-	var rSlider = r.slider(0, maxRand, 0.125, rand, n => {
-		rand = n;
+	var rSlider = r.slider(0, engine.maxRand, 0.125, engine.rand, n => {
+		engine.rand = n;
 		rField.text = n;
 	}).get();
 	r.add(vars.iconRoom + "Spread: ");
-	var rField = r.field("" + rand, text => {
-		rand = parseInt(text);
-		rSlider.value = rand;
+	var rField = r.field("" + engine.rand, text => {
+		engine.rand = parseInt(text);
+		rSlider.value = engine.rand;
 	}).get();
 	rField.validator = text => !isNaN(parseInt(text));
 	utable.row();
@@ -440,15 +444,15 @@ function updatespawnlist(filter, utable){
 	/* Count selection */
 	let t = utable.table().center().bottom().get();
 	t.defaults().left();
-	var cSlider = t.slider(1, maxCount, count, n => {
-		count = n;
+	var cSlider = t.slider(1, engine.maxCount, engine.count, n => {
+		engine.count = n;
 		cField.text = n;
 	}).get();
 	
 	t.add(vars.iconRoom + "Count: ");
-	var cField = t.field("" + count, text => {
-		count = parseInt(text);
-		cSlider.value = count;
+	var cField = t.field("" + engine.count, text => {
+		engine.count = parseInt(text);
+		cSlider.value = engine.count;
 	}).get();
 	cField.validator = text => !isNaN(parseInt(text));
 
@@ -458,28 +462,28 @@ function updatespawnlist(filter, utable){
 	u.defaults().left();
 
 	u.button("Toggle Mode", Icon.refresh, () => {
-		fuseMode = !fuseMode;
-		if (fuseMode) {
+		engine.fuseMode = !engine.fuseMode;
+		if (engine.fuseMode) {
 			spawnerButton.style.imageUp = Icon.refresh;
 	 		//spawnerButton.getCells().get(1).get().text = vars.iconRoom + "Fuse";
 	 	}else{
-			const icon = new TextureRegionDrawable(spawning.uiIcon);
+			const icon = new TextureRegionDrawable(engine.spawning.uiIcon);
 			spawnerButton.style.imageUp = icon;
-	 		spawningLabelText = spawning.localizedName;
+	 		spawningLabelText = engine.spawning.localizedName;
 			// spawnerButton.getCells().get(1).get().text = vars.iconRoom + "Spawn";
 		};
 	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 	poss = u.button("Set Position", Icon.effect, () => {
-		diag.spawndialog.hide();
-		expectingPos = "Spawn";
+		spawndialog.hide();
+		engine.expectingPos = "Spawn";
 	 	ui.click((screen, world) => {
-			expectingPos = false;
+			engine.expectingPos = false;
 	 		// We don't need sub-wu precision + make /js output nicer
-	 		spos.set(Math.round(world.x), Math.round(world.y));
-			Fx.tapBlock.at(spos.x, spos.y);
-	 		poss.getLabel().text = "Set Position\n(" + Math.round(spos.x / Vars.tilesize)
-	 			+ ", " + Math.round(spos.y / Vars.tilesize) + ")";
-	 			diag.spawndialog.show();
+	 		engine.spos.set(Math.round(world.x), Math.round(world.y));
+			Fx.tapBlock.at(engine.spos.x, engine.spos.y);
+	 		poss.getLabel().text = "Set Position\n(" + Math.round(engine.spos.x / Vars.tilesize)
+	 			+ ", " + Math.round(engine.spos.y / Vars.tilesize) + ")";
+	 			spawndialog.show();
 		}, true);
 	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 }
@@ -520,9 +524,9 @@ function updateblocklist(filter, blockTable){
 
 				const icon = new TextureRegionDrawable(blo.uiIcon);
 				let b = blist.button(icon, () => {
-					block = blo;
-					blockButton.style.imageUp = icon;
-					placeButton.getCells().first().get().setDrawable(icon);
+					engine.block = blo;
+					engine.blockButton.style.imageUp = icon;
+					spawningLabelText.getCells().first().get().setDrawable(icon);
 				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(blo.localizedName);
 				let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(blo.localizedName).style(Styles.outlineLabel)})
 				b.get().addListener(tooltip)
@@ -536,29 +540,29 @@ function updateblocklist(filter, blockTable){
 
 	// TODO: copypasted code (global bugs)
 	var rotations = [Icon.right, Icon.up, Icon.left, Icon.down]
-	rotb = o.button("Rotation", rotations[brot], () => {
-		brot++;
-		if (brot > rotations.length - 1){
-			brot = 0
+	rotb = o.button("Rotation", rotations[engine.brot], () => {
+		engine.brot++;
+		if (engine.brot > rotations.length - 1){
+			engine.brot = 0
 		};
-		rotb.getCells().first().get().setDrawable(rotations[brot]);
+		rotb.getCells().first().get().setDrawable(rotations[engine.brot]);
 	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 	posb = o.button("Set Position", Icon.effect, () => {
-		diag.blockdialog.hide();
-		expectingPos = "Block";
+		blockdialog.hide();
+		engine.expectingPos = "Block";
 	 	ui.click((screen, world) => {
-			expectingPos = false;
+			engine.expectingPos = false;
 	 		// We don't need sub-wu precision + make /js output nicer
-	 		bpos.set(Math.round(world.x), Math.round(world.y));
-			Fx.tapBlock.at(bpos.x, bpos.y);
-	 		posb.getLabel().text = "Set Position\n(" + Math.round(bpos.x / Vars.tilesize)
-	 			+ ", " + Math.round(bpos.y / Vars.tilesize) + ")";
-	 			diag.blockdialog.show();
+	 		engine.bpos.set(Math.round(world.x), Math.round(world.y));
+			Fx.tapBlock.at(engine.bpos.x, engine.bpos.y);
+	 		posb.getLabel().text = "Set Position\n(" + Math.round(engine.bpos.x / Vars.tilesize)
+	 			+ ", " + Math.round(engine.bpos.y / Vars.tilesize) + ")";
+	 			blockdialog.show();
 	 	}, true);
 	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 
 	o.button("Delete Block", Icon.cancel, () => {
-		spawnblock(true);
+		engine.spawnblock(true);
 	}).width(vars.optionButtonWidth).pad(vars.gridPad).get();
 };
 
@@ -567,7 +571,7 @@ function traverseStats(filter, slist, set, mode, i){
 		let setstat = stat
 		
 
-		if (Object.prototype.toString.call(set[setstat]) == "[object JavaObject]" && objectsToCheck.includes(setstat)){
+		if (Object.prototype.toString.call(set[setstat]) == "[object JavaObject]" && engine.objectsToCheck.includes(setstat)){
 			i = traverseStats(filter, slist, set[setstat], mode, i)
 		};
 
@@ -590,13 +594,13 @@ function traverseStats(filter, slist, set, mode, i){
 			let buttonName = setstat
 			if (setstat == "infiniteResources"){ // TODO: hardcode in the name of science
 				buttonName = "Sandbox Mode"
-				statbutton = diag.gamedialog.buttons.button(buttonName, Icon.cancel, () => {
+				statbutton = gamedialog.buttons.button(buttonName, Icon.cancel, () => {
 					let enabled
 					if (mode == 0){
-						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						(Vars.net.client() ? remoteF.setRuleRemote : engine.localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 						enabled = Vars.state.rules[setstat];
 					}else{
-						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+						(Vars.net.client() ? remoteF.setStatRemote : engine.localF.setStatLocal)(set, setstat, !set[setstat]);
 						enabled = set[setstat];
 					};
 
@@ -613,10 +617,10 @@ function traverseStats(filter, slist, set, mode, i){
 				statbutton = slist.button(buttonName, Icon.cancel, () => {
 					let enabled
 					if (mode == 0){
-						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
+						(Vars.net.client() ? remoteF.setRuleRemote : engine.localF.setRuleLocal)(setstat, !Vars.state.rules[setstat]);
 						enabled = Vars.state.rules[setstat];
 					}else{
-						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, !set[setstat]);
+						(Vars.net.client() ? remoteF.setStatRemote : engine.localF.setStatLocal)(set, setstat, !set[setstat]);
 						enabled = set[setstat];
 					};
 
@@ -651,26 +655,26 @@ function traverseStats(filter, slist, set, mode, i){
 			let tool
 			let intbutton = slist.button(setstat, () => {
 				intbutton.name("number")
-				diag.valuedialog = null;
-				diag.valuedialog = new BaseDialog("Set Value");
-				diag.valuedialog.show();
-				diag.valuedialog.addCloseButton();
-				diag.valuedialog.buttons.button("Set", Icon.ok, () => {diag.valuedialog.hide()}).width(200).height(60);
+				valuedialog = null;
+				valuedialog = new BaseDialog("Set Value");
+				valuedialog.show();
+				valuedialog.addCloseButton();
+				valuedialog.buttons.button("Set", Icon.ok, () => {valuedialog.hide()}).width(200).height(60);
 
-				const vd = diag.valuedialog.cont.table().center().bottom().get();
+				const vd = valuedialog.cont.table().center().bottom().get();
 				vd.defaults().left();
 				var vField
 
 				if (mode == 0){
 					vField = vd.field(Vars.state.rules[setstat], text => {
 						tool.clear();
-						(Vars.net.client() ? remoteF.setRuleRemote : localF.setRuleLocal)(setstat, parseFloat(text));
+						(Vars.net.client() ? remoteF.setRuleRemote : engine.localF.setRuleLocal)(setstat, parseFloat(text));
 						tool.add(text);
 					}).get();
 				}else{
 					vField = vd.field(set[setstat], text => {
 						tool.clear();
-						(Vars.net.client() ? remoteF.setStatRemote : localF.setStatLocal)(set, setstat, parseFloat(text));
+						(Vars.net.client() ? remoteF.setStatRemote : engine.localF.setStatLocal)(set, setstat, parseFloat(text));
 						tool.add(text);
 					}).get();
 
@@ -692,13 +696,13 @@ function updatestats(filter, table, set) {
 	// 2 = block
 	// 3 = weapon
 	let mode = 0
-	if (set == unitstat) {
+	if (set == engine.unitstat) {
 		mode = 1
-	}else if (set == blockstat) {
+	}else if (set == engine.blockstat) {
 		mode = 2
-	}else if (set == weaponstat) {
+	}else if (set == engine.weaponstat) {
 		mode = 3
-	}else if (set == bulletstat) {
+	}else if (set == engine.bulletstat) {
 		mode = 4
 	}
 
@@ -720,11 +724,11 @@ function updatestats(filter, table, set) {
 	if (mode == 0){
 		table.label(() => "World Rules");
 	}else if (mode == 1){
-		table.label(() => unitstat.localizedName);
+		table.label(() => engine.unitstat.localizedName);
 	}else if (mode == 2) {
-		table.label(() => blockstat.localizedName);
+		table.label(() => engine.blockstat.localizedName);
 	}else if (mode == 3){
-		table.label(() => weaponstat.name);
+		table.label(() => engine.weaponstat.name);
 	}else if (mode == 4){
 		//table.label(() => bulletstat);
 	};
@@ -738,8 +742,8 @@ function updatestats(filter, table, set) {
 		const a = table.table().center().bottom().get();
 		a.defaults().left();
 		a.button("Edit Weapons", Icon.pencil, () => {
-			updateweaponslist(diag.weaponTable);
-			diag.weapondialog.show();
+			updateweaponslist(weaponTable);
+			weapondialog.show();
 		}).width(vars.optionButtonWidth).pad(vars.gridPad);
 
 		a.button("Edit Abilities", Icon.effect, () => {
@@ -747,14 +751,14 @@ function updatestats(filter, table, set) {
 	}
 	if (mode == 3){
 		table.button("Edit Bullet", Icon.pencil, () => {
-			updatestats(bufilter, diag.bulletStatsTable, bulletstat);
-			diag.bulletstatdialog.show()
+			updatestats(bufilter, bulletStatsTable, engine.bulletstat);
+			bulletstatdialog.show()
 		}).width(vars.optionButtonWidth);
 	};
 };
 
 function updateweaponslist(wtable){
-	let weapons = unitstat.weapons
+	let weapons = engine.unitstat.weapons
 	wtable.clear();
 	wtable.pane(wlist => {
 		let i = 0
@@ -768,10 +772,10 @@ function updateweaponslist(wtable){
 			// 	//icon.region.width = -icon.region.width
 			// }
 			let b = wlist.button(icon, () => {
-				weaponstat = weapon
-				bulletstat = weaponstat.bullet
-				updatestats(wsfilter, diag.weaponStatsTable, weaponstat);
-				diag.weaponstatdialog.show();
+				engine.weaponstat = weapon
+				engine.bulletstat = engine.weaponstat.bullet
+				updatestats(engine.wsfilter, weaponStatsTable, engine.weaponstat);
+				weaponstatdialog.show();
 			}).pad(vars.gridPad).size(76);//.tooltip(weapon.name);
 			let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(weapon.name).style(Styles.outlineLabel)})
 			b.get().addListener(tooltip)
@@ -809,8 +813,8 @@ function updateweaponslist(wtable){
 			});
 
 			ui.selectgrid("Add a new weapon", weaponNames, weapons, w => {
-				addWeapon(w);
-				updateweaponslist(diag.weaponTable);
+				engine.addWeapon(w);
+				updateweaponslist(weaponTable);
 			}, weaponIcons, vars.unitsperrow, "Search Weapons")
 		}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip("Add a new weapon");
 		let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add("Add a new weapon").style(Styles.outlineLabel)})
@@ -825,7 +829,7 @@ module.exports = {
 	updateweaponslist : updateweaponslist,
 	updateblocklist : updateblocklist,
     // setters
-    setmain : (m) => main = m,
+    setengine : (m) => engine = m,
 
     // getters
     spawndialog : () => spawndialog,
@@ -847,4 +851,6 @@ module.exports = {
     weaponTable : () => weaponTable,
     weaponStatsTable : () => weaponStatsTable,
     bulletStatsTable : () => bulletStatsTable,
+
+	placeButton : () => placeButton,
 };
