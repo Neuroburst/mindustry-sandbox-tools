@@ -8,6 +8,7 @@ var buttonWidth = 55;
 var miniButtonCut = 30
 var iconSize = 48;
 var fullIconSize = 30;
+var largeIconSize = 52;
 var BarPad = 2;
 
 var unitsperrow = 10
@@ -64,4 +65,5 @@ module.exports = {
     rangeBorderTransparency : rangeBorderTransparency,
     miniButtonCut : miniButtonCut,
     fullIconSize : fullIconSize,
+    largeIconSize : largeIconSize,
 }

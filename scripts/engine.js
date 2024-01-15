@@ -22,6 +22,7 @@
 // set wave
 // change team rules
 
+// fix otherSize when removing weapons
 
 // alerts/notifs:
 // make enabled warnings save their enabled status
@@ -30,9 +31,6 @@
 // add more options
 
 // global power net
-
-// total unit count for every team
-// compensate for range boost in turrets
 
 
 const vars = require("sandbox-tools/vars");
@@ -43,6 +41,8 @@ const remoteF = require("sandbox-tools/remoteFunctions");
 
 
 var team = vars.defaultTeam;
+
+var cteam = vars.defaultTeam
 
 /* Range Viewing */
 var viewTurretRange = false
@@ -133,6 +133,7 @@ var rfilter = "";
 var usfilter = "";
 var bsfilter = "";
 var wsfilter = "";
+var cfilter = "";
 
 
 // color rects for team indication
@@ -509,9 +510,11 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 				rect.tint.set(team.color);
 				processedIcons.push(rect)
 			}
-			ui.selectgrid("Team", processedNames, Team.all, t => {
-				
-			}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+			ui.selectgrid("Choose Team", processedNames, Team.all, t => {
+				cteam = t;
+				diag.countdialog().show()
+				diag.updatecountlist(cfilter, diag.countTable(), t)
+			}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 		});
 	}
 
@@ -631,10 +634,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 				rect.tint.set(team.color);
 				processedIcons.push(rect)
 			}
-			ui.selectgrid("Team", processedNames, Team.all, t => {
+			ui.selectgrid("Choose Team", processedNames, Team.all, t => {
 				(Vars.net.client() ? remoteF.changeteamRemote : localF.changeteamLocal)(t);
 				bbteamRect.tint.set(t.color);
-			}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+			}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 		}, 45);
 
 		let fillHold = 0
@@ -743,11 +746,11 @@ function createSettings(){
 					rect.tint.set(team.color);
 					processedIcons.push(rect)
 				}
-				ui.selectgrid("Team", processedNames, Team.all, t => {
+				ui.selectgrid("Choose Team", processedNames, Team.all, t => {
 					Core.settings.put(name, t.name);
 					UpdateSettings()
 					teamRect.tint.set(t.color);
-				}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+				}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 				
             }).size(250, 60).pad(vars.gridPad).tooltip("The default team for spawning blocks and units");
             p.row();
@@ -789,11 +792,11 @@ function createSettings(){
         // function addOptionSetting(name, def){
         //     p.button(name, () => {
 		// 		bbteamRect.tint.set(Vars.player.team().color);
-		// 		ui.selectgrid("Team", processedNames, Team.all, t => {
+		// 		ui.selectgrid("Choose Team", processedNames, Team.all, t => {
 		// 			//Core.settings.put(name, !Core.settings.getBool(name, def));
 		// 			UpdateSettings()
 		// 			bbteamRect.tint.set(t.color);
-		// 		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+		// 		}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 				
         //     }).width(200).pad(vars.gridPad);
         //     p.row();
@@ -826,7 +829,7 @@ function createSettings(){
 				i += 1
 			}
 			ui.selectgrid("Icons", iconNames, iconNames, i => {}, icons, vars.blocksperrow, "Search Icons")
-		}).size(250, 60).pad(vars.gridPad).tooltip("You're welcome in advance");
+		}).size(250, 60).pad(vars.gridPad).tooltip("You can thank me later >:)");
 		
     }).growY().growX();
     
@@ -871,9 +874,12 @@ Events.run(Trigger.draw, () => {
 							return}
 						
 						let range = build.block.range;
-						// if(build.block.peekAmmo() != null){
-						// 	range += build.block.peekAmmo().rangeChange;
-						// }
+						try {
+							if(build.peekAmmo() != null){
+								range += build.peekAmmo().rangeChange;
+							}
+						}catch (error){
+						}
 
 						let inView = (Math.abs(build.x - camera.position.x) - range < camera.width / 2 && Math.abs(build.y - camera.position.y) - range < camera.height / 2)
 						if(((viewAirRange&&build.block.targetAir)||(viewGroundRange&&build.block.targetGround)) && inView){
@@ -919,7 +925,7 @@ Events.run(Trigger.draw, () => {
 Events.on(UnitCreateEvent, event => {
 	let unit = event.unit
 	if (unitWarn && unit.team != Vars.player.team() && !teamData[unit.team]["units"].includes(unit.type.name)){
-		Vars.ui.hudfrag.showToast(new TextureRegionDrawable(unit.type.uiIcon), "Team " + unit.team.name + " has produced a " + unit.type.localizedName + " for the first time!");
+		Vars.ui.hudfrag.showToast(new TextureRegionDrawable(unit.type.uiIcon), "Team " + unit.team.name + " has produced a" + (unit.type.localizedName.toLowerCase().startsWith("a") ? "n" : "")  +" " + unit.type.localizedName + " for the first time!");
 		teamData[unit.team]["units"].push(unit.type.name)
 	}
 	

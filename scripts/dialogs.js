@@ -14,6 +14,7 @@ var posb;
 var rotb;
 
 var spawndialog = null
+var countdialog = null
 var statusdialog = null
 var blockdialog = null
 var gamedialog = null
@@ -32,6 +33,7 @@ var blockStatsTable;
 var weaponTable
 var weaponStatsTable
 var bulletStatsTable
+var countTable;
 
 var spawnerButton;
 var spawningLabelText;
@@ -49,6 +51,25 @@ function createDialogs(){
 	createBlockStatDialog();
 	createWeaponStatDialog();
 	createBulletStatDialog();
+	createCountDialog();
+}
+
+function createCountDialog(){
+	countdialog = new BaseDialog("Unit Count Menu");
+	countTable = countdialog.cont;
+	const i = countTable.table().center().top().get();
+	i.defaults().left()
+	i.button(Icon.zoom, Styles.flati, () => {
+		Core.scene.setKeyboardFocus(ssearch);
+	}).size(50, 50).get()
+	var ssearch = i.field(engine.cfilter, text => {
+		engine.cfilter = text;
+		updatecountlist(engine.cfilter, countTable, engine.cteam)
+	}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
+	ssearch.setMessageText("Search Units")
+	countTable.row();
+	updatecountlist("", countTable, null);
+	countdialog.addCloseButton();
 }
 
 function createStatusDialog(){
@@ -122,7 +143,7 @@ function createSpawnDialog(){
 	spawnTable.row();
 
 	spawningLabelText = engine.spawning.localizedName;
-	//spawnTable.label(() => spawningLabelText);
+	spawnTable.label(() => spawningLabelText);
 	
 	updatespawnlist("", spawnTable);
 
@@ -145,10 +166,10 @@ function createSpawnDialog(){
 			rect.tint.set(team.color);
 			processedIcons.push(rect)
 		}
-		ui.selectgrid("Team", processedNames, Team.all, t => {
+		ui.selectgrid("Choose Team", processedNames, Team.all, t => {
 	 		engine.team = t;
 	 		engine.steamRect.tint.set(engine.team.color);
-		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+		}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 	});
 };
 
@@ -259,7 +280,7 @@ function createBlockDialog(){
 
 	blockdialog.addCloseButton();
 
-	spawningLabelText = blockdialog.buttons.button("Place", new TextureRegionDrawable(engine.block.uiIcon), 42, () => {
+	placeButton = blockdialog.buttons.button("Place", new TextureRegionDrawable(engine.block.uiIcon), 42, () => {
 		engine.spawnblock(false);
 	}).disabled(() => !Vars.world.passable(engine.bpos.x / 8, engine.bpos.y / 8)).width(300).get();
 
@@ -275,10 +296,10 @@ function createBlockDialog(){
 			rect.tint.set(team.color);
 			processedIcons.push(rect)
 		}
-		ui.selectgrid("Team", processedNames, Team.all, t => {
+		ui.selectgrid("Choose Team", processedNames, Team.all, t => {
 			engine.team = t;
 			engine.bteamRect.tint.set(engine.team.color);
-		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+		}, processedIcons, vars.teamsperrow, "Search Teams", true, vars.largeIconSize);
 	});
 };
 
@@ -389,6 +410,62 @@ function createBlockStatDialog(){
 		}, bicons, vars.blocksperrow, "Search Blocks");
 	}).width(300).get();
 };
+
+function updatecountlist(filter, ctable, team){
+	if (ctable.getCells().size >= 2){
+		ctable.getCells().get(1).clearElement();
+		ctable.getCells().remove(1);
+	}
+	ctable.row()
+	if (team){
+		ctable.pane(clist => {
+			const types = Vars.content.units()
+
+			var units = team.data().units.toArray()
+
+			var i = 0;
+			types.each(unit => {
+				var count = units.filter(x => x.type==unit).length
+				if (count == 0){
+					return
+				}
+
+				var show = true
+				if (filter && filter.trim().length > 0){
+					let cfilter = filter.trim().toLowerCase()
+		
+					if (!unit.localizedName.toLowerCase().includes(cfilter)){
+						show = false
+					}
+				};
+				if (show){
+					if (i++ % 4 == 0) {
+						clist.row();
+					}
+
+					const icon = new TextureRegionDrawable(unit.uiIcon);
+					var text = String(count) + " " + unit.localizedName + (count > 1 ? (unit.localizedName.toLowerCase().endsWith("s") || unit.localizedName.toLowerCase().endsWith("x") ? "es" : "s") : "")
+					
+					let avgHealth = 0
+					for (let n in units){
+						let u = units[n]
+						if (u.type == unit){
+							avgHealth += u.health / u.type.health
+						}
+					}
+					avgHealth = Math.round((avgHealth / count) * 100)
+
+					var newButton = ui.createButton(clist, null, text, icon, "", Styles.defaulti, true, () => {	
+					}).pad(vars.gridPad).width(300).get();
+					newButton.label(() => vars.iconRoom + text)
+					let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add("Average Health: " + String(avgHealth) + "%").style(Styles.outlineLabel)})
+					newButton.addListener(tooltip)
+				};
+			});
+		}).growX().top().left();
+		ctable.row();
+	}
+}
 
 function updatespawnlist(filter, utable){
 	if (utable.getCells().size >= 3){
@@ -545,7 +622,7 @@ function updateblocklist(filter, blockTable){
 				let b = blist.button(icon, () => {
 					engine.block = blo;
 					engine.blockButton.style.imageUp = icon;
-					spawningLabelText.getCells().first().get().setDrawable(icon);
+					placeButton.getCells().first().get().setDrawable(icon);
 				}).pad(vars.gridPad).size(vars.gridButtonSize).tooltip(blo.localizedName);
 				let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(blo.localizedName).style(Styles.outlineLabel)})
 				b.get().addListener(tooltip)
@@ -847,11 +924,14 @@ module.exports = {
 	updatespawnlist : updatespawnlist,
 	updateweaponslist : updateweaponslist,
 	updateblocklist : updateblocklist,
+	updatecountlist : updatecountlist,
+
     // setters
-    setengine : (m) => engine = m,
+    setengine : (e) => engine = e,
 
     // getters
     spawndialog : () => spawndialog,
+	countdialog : () => countdialog,
     statusdialog : () => statusdialog,
     blockdialog : () => blockdialog,
     gamedialog : () => gamedialog,
@@ -870,6 +950,7 @@ module.exports = {
     weaponTable : () => weaponTable,
     weaponStatsTable : () => weaponStatsTable,
     bulletStatsTable : () => bulletStatsTable,
+	countTable : () => countTable,
 
 	placeButton : () => placeButton,
 };
