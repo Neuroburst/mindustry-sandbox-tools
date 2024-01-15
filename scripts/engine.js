@@ -1,9 +1,15 @@
-// TODO: Remote functions COMPLETELY BROKEN
+// TODO:
+
+// remember to use this to find properties/functions
+// for (let stat in _){print(stat)}
+
+// Remote functions COMPLETELY BROKEN
 // custom scripts?
 // Change between planets and weather (like testing ulities java)
 
 
 // auto-ammo ai for turrets on servers // depositing resources in ANY AI on a server is also broked
+
 
 // Stats to add:
 // Block.requirements
@@ -17,23 +23,17 @@
 // change team rules
 
 
-
-// global power net
-// compensate for range boost in turrets
-
 // alerts/notifs:
 // make enabled warnings save their enabled status
 // make blocks to warn customizable
 // add erikir blocks to lists
 // add more options
 
-// better team selection menu (grid?)
+// global power net
+
 // total unit count for every team
+// compensate for range boost in turrets
 
-
-
-// remember to use this to find properties/functions
-// for (let stat in _){print(stat)}
 
 const vars = require("sandbox-tools/vars");
 const ui = require("sandbox-tools/ui");
@@ -145,7 +145,8 @@ var spawntable = new Table().bottom().left();
 var playertable = new Table().bottom().left();
 var viewtable
 
-var aiButton
+var aiButton;
+var statusButton;
 var spawnMenuButton;
 var blockButton;
 
@@ -501,15 +502,16 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		ui.createButton(viewtable, viewtableinside, "Unit Count", Icon.chartBar, "View total unit count", Styles.defaulti, false, () => {
 			let processedNames = []
 			let processedIcons = []
-			for (let team in Team.all){
+			for (let i in Team.all){
+				let team = Team.all[i]
 				processedNames.push(team.name)
 				let rect = extend(TextureRegionDrawable, Tex.whiteui, {});
-				rect.tint = team.color
+				rect.tint.set(team.color);
 				processedIcons.push(rect)
 			}
 			ui.selectgrid("Team", processedNames, Team.all, t => {
 				
-			}, processedIcons, vars.teamsperrow, "Search Teams");
+			}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
 		});
 	}
 
@@ -615,17 +617,25 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 	if (cheats){
 		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 		bbteamRect.tint.set(Vars.player.team().color);
-		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.defaulti, false, () => {
-			// if (Vars.state.rules.sector) {
-			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-			// 	return;
-			// };
-
-			ui.select("Team", Team.all, t => {
+		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
+			if (Vars.state.rules.sector) {
+				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				return;
+			};
+			let processedNames = []
+			let processedIcons = []
+			for (let i in Team.all){
+				let team = Team.all[i]
+				processedNames.push(team.name)
+				let rect = extend(TextureRegionDrawable, Tex.whiteui, {});
+				rect.tint.set(team.color);
+				processedIcons.push(rect)
+			}
+			ui.selectgrid("Team", processedNames, Team.all, t => {
 				(Vars.net.client() ? remoteF.changeteamRemote : localF.changeteamLocal)(t);
 				bbteamRect.tint.set(t.color);
-			}, (i, t) => "[#" + t.color + "]" + t, null);
-		}, vars.fullIconSize);
+			}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
+		}, 45);
 
 		let fillHold = 0
 		let fillButton = ui.createButton(playertable, playertableinside, "Fill Core", Icon.commandRally, "Fill/Empty core (hold down for more options)", Styles.defaulti, false, () => {
@@ -656,7 +666,7 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		const miniTable = playertableinside.table().center().bottom().pad(vars.BarPad).get();
 		miniTable.defaults().left();
 
-		ui.createButton(miniTable,  miniTable.cont, "Apply status effects", new TextureRegionDrawable(Icon.effect), "Apply status effects", Styles.defaulti, false,  () => {
+		statusButton = ui.createButton(miniTable,  miniTable.cont, "Apply status effects", new TextureRegionDrawable(Icon.effect), "Apply status effects", Styles.defaulti, false,  () => {
 			if (Vars.state.rules.sector) {
 				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
 				return;
@@ -724,11 +734,20 @@ function createSettings(){
 
 			teamRect.tint.set(color);
             p.button(vars.iconRoom + name, teamRect, 40, () => {
-				ui.select("Team", Team.all, t => {
+				let processedNames = []
+				let processedIcons = []
+				for (let i in Team.all){
+					let team = Team.all[i]
+					processedNames.push(team.name)
+					let rect = extend(TextureRegionDrawable, Tex.whiteui, {});
+					rect.tint.set(team.color);
+					processedIcons.push(rect)
+				}
+				ui.selectgrid("Team", processedNames, Team.all, t => {
 					Core.settings.put(name, t.name);
 					UpdateSettings()
 					teamRect.tint.set(t.color);
-				}, (i, t) => "[#" + t.color + "]" + t, null);
+				}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
 				
             }).size(250, 60).pad(vars.gridPad).tooltip("The default team for spawning blocks and units");
             p.row();
@@ -770,11 +789,11 @@ function createSettings(){
         // function addOptionSetting(name, def){
         //     p.button(name, () => {
 		// 		bbteamRect.tint.set(Vars.player.team().color);
-		// 		ui.select("Team", Team.all, t => {
+		// 		ui.selectgrid("Team", processedNames, Team.all, t => {
 		// 			//Core.settings.put(name, !Core.settings.getBool(name, def));
 		// 			UpdateSettings()
 		// 			bbteamRect.tint.set(t.color);
-		// 		}, (i, t) => "[#" + t.color + "]" + t, null);
+		// 		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
 				
         //     }).width(200).pad(vars.gridPad);
         //     p.row();
@@ -851,18 +870,23 @@ Events.run(Trigger.draw, () => {
 						if(!build.block.flags.contains(BlockFlag.turret)){
 							return}
 						
-						let inView = (Math.abs(build.x - camera.position.x) - build.block.range < camera.width / 2 && Math.abs(build.y - camera.position.y) - build.block.range < camera.height / 2)
+						let range = build.block.range;
+						// if(build.block.peekAmmo() != null){
+						// 	range += build.block.peekAmmo().rangeChange;
+						// }
+
+						let inView = (Math.abs(build.x - camera.position.x) - range < camera.width / 2 && Math.abs(build.y - camera.position.y) - range < camera.height / 2)
 						if(((viewAirRange&&build.block.targetAir)||(viewGroundRange&&build.block.targetGround)) && inView){
 							if (!hasAmmo(build)){
 								Draw.color(Pal.gray,0.01);
-								Fill.circle(build.x, build.y, build.block.range);
+								Fill.circle(build.x, build.y, range);
 								Draw.color(Pal.gray, vars.rangeBorderTransparency);
-								Lines.circle(build.x, build.y, build.block.range);
+								Lines.circle(build.x, build.y, range);
 							}else{
 								Draw.color(build.team.color,vars.rangeFillTransparency);
-								Fill.circle(build.x, build.y, build.block.range);
+								Fill.circle(build.x, build.y, range);
 								Draw.color(build.team.color,vars.rangeBorderTransparency);
-								Lines.circle(build.x, build.y, build.block.range);
+								Lines.circle(build.x, build.y, range);
 							}
 						}
 					});

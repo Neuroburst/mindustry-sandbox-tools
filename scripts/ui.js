@@ -121,13 +121,21 @@ function select(title, values, selector, names, icons){
 };
 
 // selection menu with grid view
-function selectgrid(title, tooltips, values, selector, icons, numperrow, defaultText){
+function selectgrid(title, tooltips, values, selector, icons, numperrow, defaultText, TextureReg, iconSizeOverride){
 	if (values instanceof Seq) {
 		values = values.toArray();
 	};
 
+	if (TextureReg == undefined){
+		TextureReg = false
+	}
+
+	if (iconSizeOverride == undefined){
+		iconSizeOverride = 0;
+	}
+
 	Core.app.post(() => {
-		selectgriddialog.rebuild(title, tooltips, values, selector, icons, numperrow, defaultText);
+		selectgriddialog.rebuild(title, tooltips, values, selector, icons, numperrow, defaultText, TextureReg, iconSizeOverride);
 		selectgriddialog.show();
 	});
 };
@@ -169,7 +177,7 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 	selectdialog.addCloseButton();
 
 	selectgriddialog = extend(BaseDialog, "<title>", {
-		refresh(tooltips, values, selector, icons, numperrow){
+		refresh(tooltips, values, selector, icons, numperrow, TextureReg, iconSizeOverride){
 			if (this.cont.getCells().size >= 2){
 				this.cont.getCells().get(1).clearElement();
 				this.cont.getCells().remove(1);
@@ -189,18 +197,33 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 					if (it++ % numperrow == 0) {
 						t.row();
 					}
-					const icon = new TextureRegionDrawable(icons[i])
-					let b = t.button(icon, () => {
-						selector(values[key]);
-						this.hide();
-					}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(tooltips[i]);
+					var icon
+					if (TextureReg){
+						icon = icons[i]
+					}else{
+						icon = new TextureRegionDrawable(icons[i])
+					}
+					
+					let b
+					if (iconSizeOverride > 0){
+						b = t.button(icon, iconSizeOverride, () => {
+							selector(values[key]);
+							this.hide();
+						}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(tooltips[i]);
+					}else{
+						b = t.button(icon, () => {
+							selector(values[key]);
+							this.hide();
+						}).pad(vars.gridPad).size(vars.gridButtonSize);//.tooltip(tooltips[i]);
+					}
+					
 					let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add(tooltips[i]).style(Styles.outlineLabel)})
 					b.get().addListener(tooltip)
 				};
 			}).growX().top().left();
 		},
 
-		rebuild(title, tooltips, values, selector, icons, numperrow, defaultText) {
+		rebuild(title, tooltips, values, selector, icons, numperrow, defaultText, TextureReg, iconSizeOverride) {
 			this.cont.clear();
 			selectgridfilter = ""
 			this.title.text = title;
@@ -211,10 +234,10 @@ Events.on(EventType.ClientLoadEvent, cons(() => {
 			}).size(50, 50).get();
 			var search = s.field(selectgridfilter, text => {
 				selectgridfilter = text;
-				this.refresh(tooltips, values, selector, icons, numperrow);
+				this.refresh(tooltips, values, selector, icons, numperrow, TextureReg, iconSizeOverride);
 			}).padBottom(4).growX().size(vars.searchWidth, 50).tooltip("Search").get();
 			search.setMessageText(defaultText)
-			this.refresh(tooltips, values, selector, icons, numperrow);
+			this.refresh(tooltips, values, selector, icons, numperrow, TextureReg, iconSizeOverride);
 
 		}
 	});

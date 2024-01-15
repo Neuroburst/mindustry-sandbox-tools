@@ -121,8 +121,9 @@ function createSpawnDialog(){
 	ssearch.setMessageText("Search Units")
 	spawnTable.row();
 
-	spawnTable.label(() => spawningLabelText);
 	spawningLabelText = engine.spawning.localizedName;
+	//spawnTable.label(() => spawningLabelText);
+	
 	updatespawnlist("", spawnTable);
 
 	spawndialog.addCloseButton();
@@ -135,10 +136,19 @@ function createSpawnDialog(){
 	engine.steamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	engine.steamRect.tint.set(engine.team.color);
 	spawndialog.buttons.button("Team", engine.steamRect, vars.iconSize, () => {
-	 	ui.select("Team", Team.all, t => {
+		let processedNames = []
+		let processedIcons = []
+		for (let i in Team.all){
+			let team = Team.all[i]
+			processedNames.push(team.name)
+			let rect = extend(TextureRegionDrawable, Tex.whiteui, {});
+			rect.tint.set(team.color);
+			processedIcons.push(rect)
+		}
+		ui.selectgrid("Team", processedNames, Team.all, t => {
 	 		engine.team = t;
 	 		engine.steamRect.tint.set(engine.team.color);
-	 	}, (i, t) => "[#" + t.color + "]" + t, null);
+		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
 	});
 };
 
@@ -256,10 +266,19 @@ function createBlockDialog(){
 	engine.bteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 	engine.bteamRect.tint.set(engine.team.color);
 	blockdialog.buttons.button("Team", engine.bteamRect, vars.iconSize, () => {
-		ui.select("Team", Team.all, t => {
+		let processedNames = []
+		let processedIcons = []
+		for (let i in Team.all){
+			let team = Team.all[i]
+			processedNames.push(team.name)
+			let rect = extend(TextureRegionDrawable, Tex.whiteui, {});
+			rect.tint.set(team.color);
+			processedIcons.push(rect)
+		}
+		ui.selectgrid("Team", processedNames, Team.all, t => {
 			engine.team = t;
 			engine.bteamRect.tint.set(engine.team.color);
-		}, (i, t) => "[#" + t.color + "]" + t, null);
+		}, processedIcons, vars.teamsperrow, "Search Teams", true, 52);
 	});
 };
 
@@ -330,7 +349,7 @@ function createUnitStatDialog(){
 
 	statdialog.buttons.button("Choose Current Unit", Icon.effect, () => {
 		engine.unitstat = Vars.player.unit().type
-		if (statsTable != null){updatestats(usfilter, diag.statsTable, engine.unitstat)};
+		if (statsTable != null){updatestats(engine.usfilter, statsTable, engine.unitstat)};
 
 		var icon = new TextureRegionDrawable(engine.unitstat.uiIcon)
 		cunit.style.imageUp = icon
