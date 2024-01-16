@@ -22,13 +22,12 @@
 // set wave
 // change team rules
 
-// fix otherSize when removing weapons
+// fix otherSide when removing weapons
 
 // alerts/notifs:
 // make enabled warnings save their enabled status
 // make blocks to warn customizable
 // add erikir blocks to lists
-// add more options
 
 // global power net
 
@@ -115,16 +114,16 @@ var Topfolded = false
 /* Warnings */
 var teamData = {} // Data for each team and their accomplishments
 var allWarnings = false
-var unitWarn = false // when the enemy produces units
-var blockWarn = false // when the enemy builds a certain block for the first time
+var unitWarn = true // when the enemy produces units
+var blockWarn = true // when the enemy builds a certain block for the first time
 var blocksToWarn = [Blocks.spectre, Blocks.foreshadow, Blocks.cyclone, Blocks.swarmer, Blocks.meltdown,
 	Blocks.additiveReconstructor, Blocks.multiplicativeReconstructor, Blocks.exponentialReconstructor, Blocks.tetrativeReconstructor] // TODO: add Erekir blocks too/customization
 
 var resourcesToWarn = [Blocks.graphitePress, Blocks.siliconSmelter, Blocks.kiln, Blocks.plastaniumCompressor, Blocks.phaseWeaver, Blocks.surgeSmelter, Blocks.pyratiteMixer, Blocks.blastMixer] // TODO: add Erekir blocks too
 
-var resourcesWarn = false // when the enemy first produces a resource
-var baseWarn = false // when the base is under attack, and at what position or new units are sent to attack
-var powerWarn = false // show alerts for power failure or lacking production
+var resourcesWarn = true // when the enemy first produces a resource
+var baseWarn = true // when the base is under attack, and at what position or new units are sent to attack
+var powerWarn = true // show alerts for power failure or lacking production
 
 
 // filtering for search
@@ -413,17 +412,22 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let warnButtons = []
 		let warnings
-		let setupWarnings = function func(){
-			allWarnings = !allWarnings
+		let setupWarnings = function func(notif, change){
+			if (notif == null){
+				notif = true
+			}
+			if (change == null){
+				allWarnings = !allWarnings
+			}
 			for (let i in warnButtons){
 				let button = warnButtons[i]
 				button.disabled = !allWarnings
 			}
 			if (allWarnings){
-				if (Vars.ui.hudfrag){Vars.ui.hudfrag.showToast(Icon.ok, "Warnings Enabled (You must enable other warnings for this to do anything)")}
+				if (Vars.ui.hudfrag && notif){Vars.ui.hudfrag.showToast(Icon.ok, "Warnings Enabled")}
 				warnings.style.imageUpColor = Pal.accent
 			}else{
-				if (Vars.ui.hudfrag){Vars.ui.hudfrag.showToast(Icon.cancel, "Warnings Disabled")}
+				if (Vars.ui.hudfrag && notif){Vars.ui.hudfrag.showToast(Icon.cancel, "Warnings Disabled")}
 				warnings.style.imageUpColor = Color.white
 			}}
 		warnings = ui.createButton(viewtable, viewtableinside, "Warnings", Icon.warning, "Show alerts for enemy development", Styles.defaulti, false, setupWarnings);
@@ -434,12 +438,9 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let uwarn = ui.createButton(viewtable, viewtableinside, "Unit Warnings", Icon.units, "Show alerts for enemy unit creation", Styles.defaulti, false, () => {
 			unitWarn = !unitWarn
-			if (unitWarn){
-				uwarn.style.imageUpColor = Pal.accent
-			}else{
-				uwarn.style.imageUpColor = Color.white
-			}
+			uwarn.style.imageUpColor = (unitWarn ? Pal.accent : Color.white)
 		});
+		uwarn.style.imageUpColor = (unitWarn ? Pal.accent : Color.white)
 		warnButtons.push(uwarn)
 		uwarn.style.up = Tex.pane
 		uwarn.style.over = Tex.buttonSelectTrans
@@ -447,12 +448,9 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let bwarn = ui.createButton(viewtable, viewtableinside, "Block Warnings", Icon.crafting, "Show alerts for enemy blocks", Styles.defaulti, false, () => {
 			blockWarn = !blockWarn
-			if (blockWarn){
-				bwarn.style.imageUpColor = Pal.accent
-			}else{
-				bwarn.style.imageUpColor = Color.white
-			}
+			bwarn.style.imageUpColor = (blockWarn ? Pal.accent : Color.white)
 		});
+		bwarn.style.imageUpColor = (blockWarn ? Pal.accent : Color.white)
 		warnButtons.push(bwarn)
 		bwarn.style.up = Tex.pane
 		bwarn.style.over = Tex.buttonSelectTrans
@@ -460,12 +458,9 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let rwarn = ui.createButton(viewtable, viewtableinside, "Resource Warnings", Icon.book, "Show alerts for enemy resource production", Styles.defaulti, false, () => {
 			resourcesWarn = !resourcesWarn
-			if (resourcesWarn){
-				rwarn.style.imageUpColor = Pal.accent
-			}else{
-				rwarn.style.imageUpColor = Color.white
-			}
+			rwarn.style.imageUpColor = (resourcesWarn ? Pal.accent : Color.white)
 		});
+		rwarn.style.imageUpColor = (resourcesWarn ? Pal.accent : Color.white)
 		warnButtons.push(rwarn)
 		rwarn.style.up = Tex.pane
 		rwarn.style.over = Tex.buttonSelectTrans
@@ -473,12 +468,9 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let bawarn = ui.createButton(viewtable, viewtableinside, "Base Warnings", Icon.modeAttack, "Show alerts for when your base is under attack", Styles.defaulti, false, () => {
 			baseWarn = !baseWarn
-			if (baseWarn){
-				bawarn.style.imageUpColor = Pal.accent
-			}else{
-				bawarn.style.imageUpColor = Color.white
-			}
+			bawarn.style.imageUpColor = (baseWarn ? Pal.accent : Color.white)
 		});
+		bawarn.style.imageUpColor = (baseWarn ? Pal.accent : Color.white)
 		warnButtons.push(bawarn)
 		bawarn.style.up = Tex.pane
 		bawarn.style.over = Tex.buttonSelectTrans
@@ -486,18 +478,15 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let powerwarn = ui.createButton(viewtable, viewtableinside, "Power Warnings", Icon.power, "Show alerts for power status", Styles.defaulti, false, () => {
 			powerWarn = !powerWarn
-			if (powerWarn){
-				powerwarn.style.imageUpColor = Pal.accent
-			}else{
-				powerwarn.style.imageUpColor = Color.white
-			}
+			powerwarn.style.imageUpColor = (powerWarn ? Pal.accent : Color.white)
 		});
+		powerwarn.style.imageUpColor = (powerWarn ? Pal.accent : Color.white)
 		warnButtons.push(powerwarn)
 		powerwarn.style.up = Tex.buttonSideRight
 		powerwarn.style.over = Tex.buttonSideRightDown
 		powerwarn.style.down = Tex.buttonSideRightOver
-		allWarnings = !allWarnings // flip it
-		setupWarnings()
+
+		setupWarnings(false, false)
 
 		
 		ui.createButton(viewtable, viewtableinside, "Unit Count", Icon.chartBar, "View total unit count", Styles.defaulti, false, () => {

@@ -460,6 +460,7 @@ function updatecountlist(filter, ctable, team){
 					newButton.label(() => vars.iconRoom + text)
 					let tooltip = new Tooltip(t => {t.background(Tex.button).margin(10).add("Average Health: " + String(avgHealth) + "%").style(Styles.outlineLabel)})
 					newButton.addListener(tooltip)
+					
 				};
 			});
 		}).growX().top().left();
