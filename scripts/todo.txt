@@ -1,0 +1,2 @@
+add team specific rule changes
+(Vars.state.rules.teams.get(Team.crux).unitDamageMultiplier = 10)

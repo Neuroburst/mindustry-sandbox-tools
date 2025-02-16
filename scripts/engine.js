@@ -518,10 +518,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 	if (spawns){
 		let rulesButton = ui.createButton(spawntable, spawntableinside, "Game", Icon.menu, "Change game rules", Styles.defaulti, false, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			diag.gamedialog().show();
 		});
 		rulesButton.style.up = Tex.buttonSideLeft
@@ -529,10 +529,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		rulesButton.style.down = Tex.buttonSideLeftOver
 
 		let uStatButton = ui.createButton(spawntable, spawntableinside, "Edit", Icon.units, "Edit unit stats", Styles.cleari, false, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 
 			diag.statdialog().show();
 		});
@@ -542,10 +542,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		uStatButton.style.down = Core.atlas.getDrawable("sandbox-tools-paneOver")
 
 		let bStatButton = ui.createButton(spawntable, spawntableinside, "Edit", Icon.crafting, "Edit block stats", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 
 			diag.bstatdialog().show();
 		});
@@ -555,10 +555,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let spawnicon = new TextureRegionDrawable(spawning.uiIcon);
 		spawnMenuButton = ui.createButton(spawntable, spawntableinside, "Spawn Menu", spawnicon, "Spawn units", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 
 			diag.spawndialog().show();
 		}, vars.fullIconSize);
@@ -571,10 +571,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let blockicon = new TextureRegionDrawable(block.uiIcon);
 		blockButton = ui.createButton(spawntable, spawntableinside, "Block Menu", blockicon, "Place blocks", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 
 			diag.blockdialog().show();
 		}, vars.fullIconSize);
@@ -610,10 +610,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		bbteamRect = extend(TextureRegionDrawable, Tex.whiteui, {});
 		bbteamRect.tint.set(Vars.player.team().color);
 		ui.createButton(playertable, playertableinside, "Change Team", bbteamRect, "Change player team", Styles.cleari, false, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			let processedNames = []
 			let processedIcons = []
 			for (let i in Team.all){
@@ -631,10 +631,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 
 		let fillHold = 0
 		let fillButton = ui.createButton(playertable, playertableinside, "Fill Core", Icon.commandRally, "Fill/Empty core (hold down for more options)", Styles.defaulti, false, () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			if (fillHold > vars.longPress){return};
 			fillEmptyCore()
 		});
@@ -659,28 +659,28 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		miniTable.defaults().left();
 
 		statusButton = ui.createButton(miniTable,  miniTable.cont, "Apply status effects", new TextureRegionDrawable(Icon.effect), "Apply status effects", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			diag.statusdialog().show();
 		}, null, vars.miniButtonCut);
 
 		let invButton = ui.createButton(miniTable,  miniTable.cont, "Become invincible", new TextureRegionDrawable(Icon.modeSurvival), "Become invincible", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			Fx.blastExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/8);
 			(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(true);
 		}, null, vars.miniButtonCut);
 		//invButton.style.imageUpColor = Color.royal
 		miniTable.row()
 		let healButton = ui.createButton(miniTable, miniTable.cont, "Heal to full health", new TextureRegionDrawable(Icon.add), "Heal to full health", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 				Fx.greenBomb.at(Vars.player.getX(), Vars.player.getY(), 0);
 				(Vars.net.client() ? remoteF.healRemote : localF.healLocal)(false);
 		}, null, vars.miniButtonCut);
@@ -688,10 +688,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		
 		let kHold = 0;
 		let killButton = ui.createButton(miniTable, miniTable.cont, "Kill the current unit", new TextureRegionDrawable(Icon.commandAttack), "Kill the player (hold down to spam)", Styles.defaulti, false,  () => {
-			if (Vars.state.rules.sector) {
-				Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-				return;
-			};
+			// if (Vars.state.rules.sector) {
+			// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+			// 	return;
+			// };
 			if(kHold > vars.longPress){return}
 			Fx.dynamicExplosion.at(Vars.player.getX(), Vars.player.getY(), Vars.player.unit().type.hitSize/16);
 			kill();
@@ -699,10 +699,10 @@ function createFolderButtons(spawntableinside, playertableinside, viewtableinsid
 		//killButton.style.imageUpColor = Color.scarlet
 		killButton.update(() => {
 			if(killButton.isPressed()){
-				if (Vars.state.rules.sector) {
-					Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
-					return;
-				};
+				// if (Vars.state.rules.sector) {
+				// 	Vars.ui.showInfoToast("[scarlet]NOO CHEATING >_<", 5);
+				// 	return;
+				// };
 				
 				kHold += Core.graphics.getDeltaTime() * 60;
 				if(kHold > vars.longPress){
